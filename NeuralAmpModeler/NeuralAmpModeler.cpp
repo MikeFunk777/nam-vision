@@ -1,5 +1,6 @@
 #include <algorithm> // std::clamp, std::min
 #include <cmath> // pow
+#include <fstream>
 #include <filesystem>
 #include <iostream>
 #include <utility>
@@ -51,7 +52,7 @@ const IVStyle style =
           DEFAULT_WIDGET_FRAC,
           DEFAULT_WIDGET_ANGLE};
 const IVStyle titleStyle =
-  DEFAULT_STYLE.WithValueText(IText(30, COLOR_WHITE, "Michroma-Regular")).WithDrawFrame(false).WithShadowOffset(2.f);
+  DEFAULT_STYLE.WithValueText(IText(30, COLOR_BLACK, "Michroma-Regular")).WithDrawFrame(false).WithShadowOffset(2.f);
 const IVStyle radioButtonStyle =
   style
     .WithColor(EVColor::kON, PluginColors::NAM_THEMECOLOR) // Pressed buttons and their labels
@@ -73,6 +74,31 @@ const std::string kCalibrateInputParamName = "CalibrateInput";
 const bool kDefaultCalibrateInput = false;
 const std::string kInputCalibrationLevelParamName = "InputCalibrationLevel";
 const double kDefaultInputCalibrationLevel = 12.0;
+
+namespace
+{
+constexpr const char* kLibrarySettingsFileName = "library-settings.json";
+constexpr const char* kNAMRootDirectoryKey = "NAMRootDirectory";
+constexpr const char* kIRRootDirectoryKey = "IRRootDirectory";
+constexpr const char* kNAMRootDirectoryBookmarkKey = "NAMRootDirectoryBookmark";
+constexpr const char* kIRRootDirectoryBookmarkKey = "IRRootDirectoryBookmark";
+
+bool GetLibrarySettingsPath(std::filesystem::path& path)
+{
+#if defined OS_MAC || defined OS_WIN
+  WDL_String directory;
+  INIPath(directory, BUNDLE_NAME);
+
+  if (!CStringHasContents(directory.Get()))
+    return false;
+
+  path = std::filesystem::u8path(directory.Get()) / kLibrarySettingsFileName;
+  return true;
+#else
+  return false;
+#endif
+}
+} // namespace
 
 
 NeuralAmpModeler::NeuralAmpModeler(const InstanceInfo& info)
@@ -96,6 +122,7 @@ NeuralAmpModeler::NeuralAmpModeler(const InstanceInfo& info)
   GetParam(kSlim)->InitDouble("Slim", 0.0, 0.0, 1.0, 0.01);
 
   mNoiseGateTrigger.AddListener(&mNoiseGateGain);
+  _LoadLibrarySettings();
 
   mMakeGraphicsFunc = [&]() {
 
@@ -120,7 +147,6 @@ NeuralAmpModeler::NeuralAmpModeler(const InstanceInfo& info)
 
     const auto gearSVG = pGraphics->LoadSVG(GEAR_FN);
     const auto fileSVG = pGraphics->LoadSVG(FILE_FN);
-    const auto globeSVG = pGraphics->LoadSVG(GLOBE_ICON_FN);
     const auto crossSVG = pGraphics->LoadSVG(CLOSE_BUTTON_FN);
     const auto rightArrowSVG = pGraphics->LoadSVG(RIGHT_ARROW_FN);
     const auto leftArrowSVG = pGraphics->LoadSVG(LEFT_ARROW_FN);
@@ -129,10 +155,8 @@ NeuralAmpModeler::NeuralAmpModeler(const InstanceInfo& info)
     const auto irIconOffSVG = pGraphics->LoadSVG(IR_ICON_OFF_FN);
     const auto slimIconSVG = pGraphics->LoadSVG(SLIMMABLE_ICON_FN);
 
-    const auto backgroundBitmap = pGraphics->LoadBitmap(BACKGROUND_FN);
     const auto fileBackgroundBitmap = pGraphics->LoadBitmap(FILEBACKGROUND_FN);
     const auto inputLevelBackgroundBitmap = pGraphics->LoadBitmap(INPUTLEVELBACKGROUND_FN);
-    const auto linesBitmap = pGraphics->LoadBitmap(LINES_FN);
     const auto knobBackgroundBitmap = pGraphics->LoadBitmap(KNOBBACKGROUND_FN);
     const auto switchHandleBitmap = pGraphics->LoadBitmap(SLIDESWITCHHANDLE_FN);
     const auto meterBackgroundBitmap = pGraphics->LoadBitmap(METERBACKGROUND_FN);
@@ -140,14 +164,20 @@ NeuralAmpModeler::NeuralAmpModeler(const InstanceInfo& info)
     const auto b = pGraphics->GetBounds();
     const auto mainArea = b.GetPadded(-20);
     const auto contentArea = mainArea.GetPadded(-10);
+    const auto drawerWidth = 321.0f;
+    const auto sidebarArea = contentArea.GetFromLeft(drawerWidth).GetReducedFromLeft(6.0f);
+    const auto drawerButtonSize = 32.0f;
+    const auto drawerButtonArea = IRECT(sidebarArea.L - drawerButtonSize - 2.f, sidebarArea.T + 8.f,
+                                        sidebarArea.L - 2.f, sidebarArea.T + 8.f + drawerButtonSize);
+    const auto mainContentArea = contentArea;
     const auto titleHeight = 50.0f;
-    const auto titleArea = contentArea.GetFromTop(titleHeight);
+    const auto titleArea = mainContentArea.GetFromTop(titleHeight);
 
     // Areas for knobs
     const auto knobsPad = 20.0f;
     const auto knobsExtraSpaceBelowTitle = 25.0f;
     const auto singleKnobPad = -2.0f;
-    const auto knobsArea = contentArea.GetFromTop(NAM_KNOB_HEIGHT)
+    const auto knobsArea = mainContentArea.GetFromTop(NAM_KNOB_HEIGHT)
                              .GetReducedFromLeft(knobsPad)
                              .GetReducedFromRight(knobsPad)
                              .GetVShifted(titleHeight + knobsExtraSpaceBelowTitle);
@@ -167,16 +197,19 @@ NeuralAmpModeler::NeuralAmpModeler(const InstanceInfo& info)
     const auto fileHeight = 30.0f;
     const auto irYOffset = 38.0f;
     const auto modelArea =
-      contentArea.GetFromBottom((2.0f * fileHeight)).GetFromTop(fileHeight).GetMidHPadded(fileWidth).GetVShifted(-1);
+      mainContentArea.GetFromBottom((2.0f * fileHeight)).GetFromTop(fileHeight).GetMidHPadded(fileWidth).GetVShifted(-1);
     const auto slimIconArea =
       IRECT(modelArea.R + 6.f, modelArea.MH() - 14.f, modelArea.R + 6.f + 2.f * 28.f, modelArea.MH() + 14.f);
     const auto modelIconArea = modelArea.GetFromLeft(30).GetTranslated(-40, 10);
     const auto irArea = modelArea.GetVShifted(irYOffset);
     const auto irSwitchArea = irArea.GetFromLeft(30.0f).GetHShifted(-40.0f).GetScaledAboutCentre(0.6f);
+    const auto modelThumbnailArea =
+      IRECT(mainContentArea.L, mainContentArea.T + 252.f, mainContentArea.R, modelArea.T - 18.f)
+        .GetCentredInside(330.f, 150.f);
 
     // Areas for meters
-    const auto inputMeterArea = contentArea.GetFromLeft(30).GetHShifted(-20).GetMidVPadded(100).GetVShifted(-25);
-    const auto outputMeterArea = contentArea.GetFromRight(30).GetHShifted(20).GetMidVPadded(100).GetVShifted(-25);
+    const auto inputMeterArea = mainContentArea.GetFromLeft(30).GetHShifted(-20).GetMidVPadded(100).GetVShifted(-25);
+    const auto outputMeterArea = mainContentArea.GetFromRight(30).GetHShifted(20).GetMidVPadded(100).GetVShifted(-25);
 
     // Misc Areas
     const auto settingsButtonArea = CornerButtonArea(b);
@@ -215,10 +248,18 @@ NeuralAmpModeler::NeuralAmpModeler(const InstanceInfo& info)
       }
     };
 
-    pGraphics->AttachBackground(BACKGROUND_FN);
-    pGraphics->AttachControl(new IBitmapControl(b, linesBitmap));
-    pGraphics->AttachControl(new IVLabelControl(titleArea, "NEURAL AMP MODELER", titleStyle));
+    pGraphics->AttachPanelBackground(COLOR_WHITE);
+    pGraphics->AttachControl(new IVLabelControl(titleArea, "Pedal Division NAM", titleStyle));
     pGraphics->AttachControl(new ISVGControl(modelIconArea, modelIconSVG));
+
+    auto* modelThumbnail = new NAMModelThumbnailControl(modelThumbnailArea);
+    pGraphics->AttachControl(modelThumbnail, kCtrlTagModelThumbnail);
+    modelThumbnail->SetNAMRootDirectory(mNAMRootDirectory.Get());
+
+    auto loadDirectoryIntoBrowser = [pGraphics](int browserTag, const char* directory) {
+      if (auto* browser = pGraphics->GetControlWithTag(browserTag))
+        browser->As<NAMFileBrowserControl>()->LoadDirectory(directory);
+    };
 
 #ifdef NAM_PICK_DIRECTORY
     const std::string defaultNamFileString = "Select model directory...";
@@ -227,12 +268,10 @@ NeuralAmpModeler::NeuralAmpModeler(const InstanceInfo& info)
     const std::string defaultNamFileString = "Select model...";
     const std::string defaultIRString = "Select IR...";
 #endif
-    // Getting started page listing additional resources
-    const char* const getUrl = "https://www.neuralampmodeler.com/users#comp-marb84o5";
     pGraphics->AttachControl(
       new NAMFileBrowserControl(modelArea, kMsgTagClearModel, defaultNamFileString.c_str(), "nam",
                                 loadModelCompletionHandler, style, fileSVG, crossSVG, leftArrowSVG, rightArrowSVG,
-                                fileBackgroundBitmap, globeSVG, "Get NAM Models", getUrl),
+                                fileBackgroundBitmap, true),
       kCtrlTagModelFileBrowser);
 
     auto hideSlimOverlay = [](IControl* pCaller) {
@@ -261,8 +300,7 @@ NeuralAmpModeler::NeuralAmpModeler(const InstanceInfo& info)
     pGraphics->AttachControl(new ISVGSwitchControl(irSwitchArea, {irIconOffSVG, irIconOnSVG}, kIRToggle));
     pGraphics->AttachControl(
       new NAMFileBrowserControl(irArea, kMsgTagClearIR, defaultIRString.c_str(), "wav", loadIRCompletionHandler, style,
-                                fileSVG, crossSVG, leftArrowSVG, rightArrowSVG, fileBackgroundBitmap, globeSVG,
-                                "Get IRs", getUrl),
+                                fileSVG, crossSVG, leftArrowSVG, rightArrowSVG, fileBackgroundBitmap, true),
       kCtrlTagIRFileBrowser);
     pGraphics->AttachControl(
       new NAMSwitchControl(ngToggleArea, kNoiseGateActive, "Noise Gate", style, switchHandleBitmap));
@@ -283,6 +321,16 @@ NeuralAmpModeler::NeuralAmpModeler(const InstanceInfo& info)
     pGraphics->AttachControl(new NAMMeterControl(inputMeterArea, meterBackgroundBitmap, style), kCtrlTagInputMeter);
     pGraphics->AttachControl(new NAMMeterControl(outputMeterArea, meterBackgroundBitmap, style), kCtrlTagOutputMeter);
 
+    auto* librarySidebar = new NAMLibrarySidebarControl(
+      sidebarArea, [loadDirectoryIntoBrowser](const char* directory) {
+        loadDirectoryIntoBrowser(kCtrlTagModelFileBrowser, directory);
+      },
+      [loadDirectoryIntoBrowser](const char* directory) { loadDirectoryIntoBrowser(kCtrlTagIRFileBrowser, directory); });
+    pGraphics->AttachControl(librarySidebar, kCtrlTagLibrarySidebar)->Hide(true);
+    librarySidebar->SetRoots(mNAMRootDirectory.Get(), mIRRootDirectory.Get());
+    pGraphics->AttachControl(new NAMLibraryDrawerButtonControl(drawerButtonArea, kCtrlTagLibrarySidebar),
+                             kCtrlTagLibraryDrawerButton);
+
     // Settings/help/about box
     pGraphics->AttachControl(new NAMCircleButtonControl(
       settingsButtonArea,
@@ -292,9 +340,9 @@ NeuralAmpModeler::NeuralAmpModeler(const InstanceInfo& info)
       gearSVG));
 
     pGraphics
-      ->AttachControl(new NAMSettingsPageControl(b, backgroundBitmap, inputLevelBackgroundBitmap, switchHandleBitmap,
-                                                 crossSVG, style, radioButtonStyle),
-                      kCtrlTagSettingsBox)
+      ->AttachControl(
+        new NAMSettingsPageControl(b, inputLevelBackgroundBitmap, switchHandleBitmap, crossSVG, style, radioButtonStyle),
+        kCtrlTagSettingsBox)
       ->Hide(true);
 
     const auto slimKnobArea = b.GetCentredInside(100.f, NAM_KNOB_HEIGHT + 24.f);
@@ -441,6 +489,7 @@ void NeuralAmpModeler::OnIdle()
         p->Hide(true);
       if (auto* p = pGraphics->GetControlWithTag(kCtrlTagSlimKnob))
         p->Hide(true);
+      SendControlMsgFromDelegate(kCtrlTagModelThumbnail, kMsgTagClearModel);
       pGraphics->SetAllControlsDirty();
       mModelCleared = false;
     }
@@ -459,6 +508,8 @@ bool NeuralAmpModeler::SerializeState(IByteChunk& chunk) const
   // when we unserialize)
   chunk.PutStr(mNAMPath.Get());
   chunk.PutStr(mIRPath.Get());
+  chunk.PutStr(mNAMRootDirectory.Get());
+  chunk.PutStr(mIRRootDirectory.Get());
   return SerializeParams(chunk);
 }
 
@@ -484,9 +535,19 @@ void NeuralAmpModeler::OnUIOpen()
 {
   Plugin::OnUIOpen();
 
+  _RefreshLibrarySidebar();
+
+  if (auto* pGraphics = GetUI())
+  {
+    if (auto* settings = pGraphics->GetControlWithTag(kCtrlTagSettingsBox))
+      settings->As<NAMSettingsPageControl>()->SetLibraryDirectories(mNAMRootDirectory.Get(), mIRRootDirectory.Get());
+  }
+
   if (mNAMPath.GetLength())
   {
     SendControlMsgFromDelegate(kCtrlTagModelFileBrowser, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
+    SendControlMsgFromDelegate(kCtrlTagLibrarySidebar, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
+    SendControlMsgFromDelegate(kCtrlTagModelThumbnail, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
     // If it's not loaded yet, then mark as failed.
     // If it's yet to be loaded, then the completion handler will set us straight once it runs.
     if (mModel == nullptr && mStagedModel == nullptr)
@@ -496,6 +557,7 @@ void NeuralAmpModeler::OnUIOpen()
   if (mIRPath.GetLength())
   {
     SendControlMsgFromDelegate(kCtrlTagIRFileBrowser, kMsgTagLoadedIR, mIRPath.GetLength(), mIRPath.Get());
+    SendControlMsgFromDelegate(kCtrlTagLibrarySidebar, kMsgTagLoadedIR, mIRPath.GetLength(), mIRPath.Get());
     if (mIR == nullptr && mStagedIR == nullptr)
       SendControlMsgFromDelegate(kCtrlTagIRFileBrowser, kMsgTagLoadFailed);
   }
@@ -504,6 +566,116 @@ void NeuralAmpModeler::OnUIOpen()
   {
     _UpdateControlsFromModel();
   }
+}
+
+void NeuralAmpModeler::SetNAMRootDirectory(const WDL_String& directory)
+{
+  mNAMRootDirectory.Set(directory.Get());
+#ifdef OS_MAC
+  mNAMRootDirectoryBookmark.Set("");
+  CreateSecurityScopedBookmark(mNAMRootDirectory.Get(), mNAMRootDirectoryBookmark);
+#endif
+  _SaveLibrarySettings();
+  _RefreshLibrarySidebar();
+
+  if (auto* pGraphics = GetUI())
+  {
+    if (auto* settings = pGraphics->GetControlWithTag(kCtrlTagSettingsBox))
+      settings->As<NAMSettingsPageControl>()->SetLibraryDirectories(mNAMRootDirectory.Get(), mIRRootDirectory.Get());
+  }
+}
+
+void NeuralAmpModeler::SetIRRootDirectory(const WDL_String& directory)
+{
+  mIRRootDirectory.Set(directory.Get());
+#ifdef OS_MAC
+  mIRRootDirectoryBookmark.Set("");
+  CreateSecurityScopedBookmark(mIRRootDirectory.Get(), mIRRootDirectoryBookmark);
+#endif
+  _SaveLibrarySettings();
+  _RefreshLibrarySidebar();
+
+  if (auto* pGraphics = GetUI())
+  {
+    if (auto* settings = pGraphics->GetControlWithTag(kCtrlTagSettingsBox))
+      settings->As<NAMSettingsPageControl>()->SetLibraryDirectories(mNAMRootDirectory.Get(), mIRRootDirectory.Get());
+  }
+}
+
+void NeuralAmpModeler::_RefreshLibrarySidebar()
+{
+  if (auto* pGraphics = GetUI())
+  {
+    if (auto* sidebar = pGraphics->GetControlWithTag(kCtrlTagLibrarySidebar))
+      sidebar->As<NAMLibrarySidebarControl>()->SetRoots(mNAMRootDirectory.Get(), mIRRootDirectory.Get());
+    if (auto* thumbnail = pGraphics->GetControlWithTag(kCtrlTagModelThumbnail))
+      thumbnail->As<NAMModelThumbnailControl>()->SetNAMRootDirectory(mNAMRootDirectory.Get());
+  }
+}
+
+void NeuralAmpModeler::_LoadLibrarySettings()
+{
+  std::filesystem::path path;
+  if (!GetLibrarySettingsPath(path))
+    return;
+
+  std::error_code ec;
+  if (!std::filesystem::is_regular_file(path, ec))
+    return;
+
+  std::ifstream stream(path);
+  if (!stream.good())
+    return;
+
+  const auto settings = nlohmann::json::parse(stream, nullptr, false);
+  if (settings.is_discarded() || !settings.is_object())
+    return;
+
+  const auto loadString = [&settings](const char* key, WDL_String& target) {
+    const auto it = settings.find(key);
+    if (it != settings.end() && it->is_string())
+      target.Set(it->get<std::string>().c_str());
+  };
+
+  loadString(kNAMRootDirectoryKey, mNAMRootDirectory);
+  loadString(kIRRootDirectoryKey, mIRRootDirectory);
+
+#ifdef OS_MAC
+  loadString(kNAMRootDirectoryBookmarkKey, mNAMRootDirectoryBookmark);
+  loadString(kIRRootDirectoryBookmarkKey, mIRRootDirectoryBookmark);
+
+  WDL_String resolvedPath;
+  if (StartAccessingSecurityScopedBookmark(mNAMRootDirectoryBookmark.Get(), resolvedPath) && resolvedPath.GetLength())
+    mNAMRootDirectory.Set(resolvedPath.Get());
+
+  resolvedPath.Set("");
+  if (StartAccessingSecurityScopedBookmark(mIRRootDirectoryBookmark.Get(), resolvedPath) && resolvedPath.GetLength())
+    mIRRootDirectory.Set(resolvedPath.Get());
+#endif
+}
+
+void NeuralAmpModeler::_SaveLibrarySettings() const
+{
+  std::filesystem::path path;
+  if (!GetLibrarySettingsPath(path))
+    return;
+
+  std::error_code ec;
+  std::filesystem::create_directories(path.parent_path(), ec);
+  if (ec)
+    return;
+
+  nlohmann::json settings;
+  settings[kNAMRootDirectoryKey] = std::string(mNAMRootDirectory.Get());
+  settings[kIRRootDirectoryKey] = std::string(mIRRootDirectory.Get());
+#ifdef OS_MAC
+  settings[kNAMRootDirectoryBookmarkKey] = std::string(mNAMRootDirectoryBookmark.Get());
+  settings[kIRRootDirectoryBookmarkKey] = std::string(mIRRootDirectoryBookmark.Get());
+#endif
+
+  std::ofstream stream(path, std::ios::trunc);
+  if (stream.good())
+    stream << settings.dump(2) << '\n';
 }
 
 void NeuralAmpModeler::OnParamChange(int paramIdx)
@@ -770,6 +942,8 @@ std::string NeuralAmpModeler::_StageModel(const WDL_String& modelPath)
     mStagedModel = std::move(temp);
     mNAMPath = modelPath;
     SendControlMsgFromDelegate(kCtrlTagModelFileBrowser, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
+    SendControlMsgFromDelegate(kCtrlTagLibrarySidebar, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
+    SendControlMsgFromDelegate(kCtrlTagModelThumbnail, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
   }
   catch (std::runtime_error& e)
   {
@@ -811,6 +985,7 @@ dsp::wav::LoadReturnCode NeuralAmpModeler::_StageIR(const WDL_String& irPath)
   {
     mIRPath = irPath;
     SendControlMsgFromDelegate(kCtrlTagIRFileBrowser, kMsgTagLoadedIR, mIRPath.GetLength(), mIRPath.Get());
+    SendControlMsgFromDelegate(kCtrlTagLibrarySidebar, kMsgTagLoadedIR, mIRPath.GetLength(), mIRPath.Get());
   }
   else
   {

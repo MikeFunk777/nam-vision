@@ -6,13 +6,13 @@
 	<array>
 		<dict>
 			<key>description</key>
-			<string>NeuralAmpModeler</string>
+			<string>Pedal Division NAM</string>
 			<key>factoryFunction</key>
 			<string>NeuralAmpModeler_Factory</string>
 			<key>manufacturer</key>
 			<string>SDAa</string>
 			<key>name</key>
-			<string>Steven Atkinson: NeuralAmpModeler</string>
+			<string>Pedal Division: Pedal Division NAM</string>
 			<key>sandboxSafe</key>
 			<true/>
 			<key>subtype</key>
@@ -20,31 +20,31 @@
 			<key>type</key>
 			<string>aufx</string>
 			<key>version</key>
-			<integer>1806</integer>
+			<integer>1807</integer>
 		</dict>
 	</array>
 	<key>AudioUnit Version</key>
-	<string>0x0000070e</string>
+	<string>0x0000070f</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>English</string>
 	<key>CFBundleExecutable</key>
-	<string>NeuralAmpModeler</string>
+	<string>pedaldivision-nam</string>
 	<key>CFBundleGetInfoString</key>
-	<string>NeuralAmpModeler v0.7.14 Copyright 2022 Steven Atkinson</string>
+	<string>pedaldivision-nam v0.7.15 Copyright 2026 Pedal Division</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.StevenAtkinson.audiounit.NeuralAmpModeler</string>
+	<string>com.PedalDivision.audiounit.pedaldivision-nam</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>NeuralAmpModeler</string>
+	<string>pedaldivision-nam</string>
 	<key>CFBundlePackageType</key>
 	<string>BNDL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.7.14</string>
+	<string>0.7.15</string>
 	<key>CFBundleSignature</key>
 	<string>1YEo</string>
 	<key>CFBundleVersion</key>
-	<string>0.7.14</string>
+	<string>0.7.15</string>
 	<key>CSResourcesFileMapped</key>
 	<true/>
 	<key>LSMinimumSystemVersion</key>

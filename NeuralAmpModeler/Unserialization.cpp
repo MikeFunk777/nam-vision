@@ -57,6 +57,13 @@ void NeuralAmpModeler::_UnserializeApplyConfig(nlohmann::json& config)
   mNAMPath.Set(static_cast<std::string>(config["NAMPath"]).c_str());
   mIRPath.Set(static_cast<std::string>(config["IRPath"]).c_str());
 
+  const std::string namRootDirectory = config.value("NAMRootDirectory", "");
+  const std::string irRootDirectory = config.value("IRRootDirectory", "");
+  if (!namRootDirectory.empty())
+    mNAMRootDirectory.Set(namRootDirectory.c_str());
+  if (!irRootDirectory.empty())
+    mIRRootDirectory.Set(irRootDirectory.c_str());
+
   if (mNAMPath.GetLength())
   {
     _StageModel(mNAMPath);
@@ -87,6 +94,29 @@ int _UnserializePathsAndExpectedKeys(const iplug::IByteChunk& chunk, int startPo
   return pos;
 }
 
+int _UnserializePathsRootsAndExpectedKeys(const iplug::IByteChunk& chunk, int startPos, nlohmann::json& config,
+                                          std::vector<std::string>& paramNames)
+{
+  int pos = startPos;
+  WDL_String path;
+  pos = chunk.GetStr(path, pos);
+  config["NAMPath"] = std::string(path.Get());
+  pos = chunk.GetStr(path, pos);
+  config["IRPath"] = std::string(path.Get());
+  pos = chunk.GetStr(path, pos);
+  config["NAMRootDirectory"] = std::string(path.Get());
+  pos = chunk.GetStr(path, pos);
+  config["IRRootDirectory"] = std::string(path.Get());
+
+  for (auto it = paramNames.begin(); it != paramNames.end(); ++it)
+  {
+    double v = 0.0;
+    pos = chunk.Get(&v, pos);
+    config[*it] = v;
+  }
+  return pos;
+}
+
 void _RenameKeys(nlohmann::json& j, std::unordered_map<std::string, std::string> newNames)
 {
   // Assumes no aliasing!
@@ -97,11 +127,41 @@ void _RenameKeys(nlohmann::json& j, std::unordered_map<std::string, std::string>
   }
 }
 
+// v0.7.15
+
+void _UpdateConfigFrom_0_7_15(nlohmann::json& config)
+{
+  // Fill me in once something changes!
+}
+
+int _GetConfigFrom_0_7_15(const iplug::IByteChunk& chunk, int startPos, nlohmann::json& config)
+{
+  std::vector<std::string> paramNames{"Input",
+                                      "Threshold",
+                                      "Bass",
+                                      "Middle",
+                                      "Treble",
+                                      "Output",
+                                      "NoiseGateActive",
+                                      "ToneStack",
+                                      "IRToggle",
+                                      "CalibrateInput",
+                                      "InputCalibrationLevel",
+                                      "OutputMode",
+                                      "Slim"};
+
+  int pos = _UnserializePathsRootsAndExpectedKeys(chunk, startPos, config, paramNames);
+  _UpdateConfigFrom_0_7_15(config);
+  return pos;
+}
+
 // v0.7.14
 
 void _UpdateConfigFrom_0_7_14(nlohmann::json& config)
 {
-  // Fill me in once something changes!
+  config["NAMRootDirectory"] = "";
+  config["IRRootDirectory"] = "";
+  _UpdateConfigFrom_0_7_15(config);
 }
 
 int _GetConfigFrom_0_7_14(const iplug::IByteChunk& chunk, int startPos, nlohmann::json& config)
@@ -277,7 +337,11 @@ int NeuralAmpModeler::_UnserializeStateWithKnownVersion(const iplug::IByteChunk&
   _Version version(versionStr);
   // Act accordingly
   nlohmann::json config;
-  if (version >= _Version(0, 7, 14))
+  if (version >= _Version(0, 7, 15))
+  {
+    pos = _GetConfigFrom_0_7_15(chunk, pos, config);
+  }
+  else if (version >= _Version(0, 7, 14))
   {
     pos = _GetConfigFrom_0_7_14(chunk, pos, config);
   }

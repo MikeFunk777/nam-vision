@@ -21,12 +21,12 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
-		4F10E7C020B17EDB00F5B09B /* NeuralAmpModeler-iOS-MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4F10E7BF20B17EDB00F5B09B /* NeuralAmpModeler-iOS-MainInterface.storyboard */; };
-		4F1115CF2296DA95000CFCBF /* NeuralAmpModeler-iOS-MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4F10E7BF20B17EDB00F5B09B /* NeuralAmpModeler-iOS-MainInterface.storyboard */; };
-		4F3E0F6A20A0BCD900A9C2BE /* NeuralAmpModeler-iOS.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4F3E0F6720A0BC5B00A9C2BE /* NeuralAmpModeler-iOS.storyboard */; };
+		4F10E7C020B17EDB00F5B09B /* pedaldivision-nam-iOS-MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4F10E7BF20B17EDB00F5B09B /* pedaldivision-nam-iOS-MainInterface.storyboard */; };
+		4F1115CF2296DA95000CFCBF /* pedaldivision-nam-iOS-MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4F10E7BF20B17EDB00F5B09B /* pedaldivision-nam-iOS-MainInterface.storyboard */; };
+		4F3E0F6A20A0BCD900A9C2BE /* pedaldivision-nam-iOS.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4F3E0F6720A0BC5B00A9C2BE /* pedaldivision-nam-iOS.storyboard */; };
 		4F3E0F6B20A0BCE300A9C2BE /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4F3E0F6820A0BCAF00A9C2BE /* Images.xcassets */; };
 		4F4856842773BD77005BCF8E /* NeuralAmpModelerAUv3Appex.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F4856832773BD77005BCF8E /* NeuralAmpModelerAUv3Appex.m */; };
-		4FB2269720A0D3A800614769 /* NeuralAmpModeler-iOS-LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4FB2269620A0D3A800614769 /* NeuralAmpModeler-iOS-LaunchScreen.storyboard */; };
+		4FB2269720A0D3A800614769 /* pedaldivision-nam-iOS-LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4FB2269620A0D3A800614769 /* pedaldivision-nam-iOS-LaunchScreen.storyboard */; };
 		4FBDC94D29FFF143004FF203 /* Resample.h in Headers */ = {isa = PBXBuildFile; fileRef = 4FBDC93329FFF143004FF203 /* Resample.h */; };
 		4FBDC94E29FFF143004FF203 /* RecursiveLinearFilter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FBDC93429FFF143004FF203 /* RecursiveLinearFilter.cpp */; };
 		4FBDC94F29FFF143004FF203 /* wav.h in Headers */ = {isa = PBXBuildFile; fileRef = 4FBDC93529FFF143004FF203 /* wav.h */; };
@@ -92,7 +92,7 @@
 		4FDF6D7F2267CEBA0007B686 /* IPlugAUPlayer.mm in Sources */ = {isa = PBXBuildFile; fileRef = 4FDF6D7D2267CEBA0007B686 /* IPlugAUPlayer.mm */; };
 		4FE0DEE829A183B700DDBCC8 /* NeuralAmpModelerAU.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4FC6982F293BA47F0076EC33 /* NeuralAmpModelerAU.framework */; };
 		4FE0DEF029A2E0F100DDBCC8 /* IPlugAUViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 4FFF105A20A0E57100D3092F /* IPlugAUViewController.mm */; settings = {COMPILER_FLAGS = "-fobjc-arc"; }; };
-		91236D811B08F59300734C5E /* NeuralAmpModelerAppExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 91236D771B08F59300734C5E /* NeuralAmpModelerAppExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		91236D811B08F59300734C5E /* pedaldivision-namAppExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 91236D771B08F59300734C5E /* pedaldivision-namAppExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AA341E2B2B9E5A650069C260 /* ToneStack.h in Headers */ = {isa = PBXBuildFile; fileRef = AA341E292B9E5A650069C260 /* ToneStack.h */; };
 		AA341E2C2B9E5A650069C260 /* ToneStack.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA341E2A2B9E5A650069C260 /* ToneStack.cpp */; };
 		AA341E2D2B9E5A650069C260 /* ToneStack.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AA341E2A2B9E5A650069C260 /* ToneStack.cpp */; };
@@ -148,7 +148,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				91236D811B08F59300734C5E /* NeuralAmpModelerAppExtension.appex in Embed App Extensions */,
+				91236D811B08F59300734C5E /* pedaldivision-namAppExtension.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -156,13 +156,13 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		4F10E7BF20B17EDB00F5B09B /* NeuralAmpModeler-iOS-MainInterface.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = "NeuralAmpModeler-iOS-MainInterface.storyboard"; path = "../resources/NeuralAmpModeler-iOS-MainInterface.storyboard"; sourceTree = "<group>"; };
+		4F10E7BF20B17EDB00F5B09B /* pedaldivision-nam-iOS-MainInterface.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = "pedaldivision-nam-iOS-MainInterface.storyboard"; path = "../resources/pedaldivision-nam-iOS-MainInterface.storyboard"; sourceTree = "<group>"; };
 		4F10E7C520B189DD00F5B09B /* NeuralAmpModeler-iOS.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = "NeuralAmpModeler-iOS.entitlements"; sourceTree = "<group>"; };
 		4F2020F620A1B2B500F22200 /* scripts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = scripts; path = ../scripts; sourceTree = "<group>"; };
 		4F2602DB2269F79200C7E97E /* tex */ = {isa = PBXFileReference; lastKnownFileType = folder; name = tex; path = ../resources/tex; sourceTree = "<group>"; };
-		4F3E0F6420A0BC1C00A9C2BE /* NeuralAmpModeler-iOS-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "NeuralAmpModeler-iOS-Info.plist"; path = "../resources/NeuralAmpModeler-iOS-Info.plist"; sourceTree = "<group>"; };
-		4F3E0F6520A0BC4000A9C2BE /* NeuralAmpModeler-iOS-AUv3-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "NeuralAmpModeler-iOS-AUv3-Info.plist"; path = "../resources/NeuralAmpModeler-iOS-AUv3-Info.plist"; sourceTree = "<group>"; };
-		4F3E0F6720A0BC5B00A9C2BE /* NeuralAmpModeler-iOS.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = "NeuralAmpModeler-iOS.storyboard"; path = "../resources/NeuralAmpModeler-iOS.storyboard"; sourceTree = "<group>"; };
+		4F3E0F6420A0BC1C00A9C2BE /* pedaldivision-nam-iOS-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "pedaldivision-nam-iOS-Info.plist"; path = "../resources/pedaldivision-nam-iOS-Info.plist"; sourceTree = "<group>"; };
+		4F3E0F6520A0BC4000A9C2BE /* pedaldivision-nam-iOS-AUv3-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "pedaldivision-nam-iOS-AUv3-Info.plist"; path = "../resources/pedaldivision-nam-iOS-AUv3-Info.plist"; sourceTree = "<group>"; };
+		4F3E0F6720A0BC5B00A9C2BE /* pedaldivision-nam-iOS.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = "pedaldivision-nam-iOS.storyboard"; path = "../resources/pedaldivision-nam-iOS.storyboard"; sourceTree = "<group>"; };
 		4F3E0F6820A0BCAF00A9C2BE /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = ../resources/Images.xcassets; sourceTree = "<group>"; };
 		4F4856832773BD77005BCF8E /* NeuralAmpModelerAUv3Appex.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = NeuralAmpModelerAUv3Appex.m; path = ../resources/NeuralAmpModelerAUv3Appex.m; sourceTree = "<group>"; };
 		4F4A44A322D3604800A9D1A1 /* IGraphicsSkia.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IGraphicsSkia.h; sourceTree = "<group>"; };
@@ -267,10 +267,10 @@
 		4F8D7DCB224AE821002A1A2A /* IGraphicsNanoVG_src.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = IGraphicsNanoVG_src.m; sourceTree = "<group>"; };
 		4F8D8BD82316701900EFA1FB /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../README.md; sourceTree = "<group>"; };
 		4F9979242A066F960066545C /* NeuralAmpModelerControls.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = NeuralAmpModelerControls.h; path = ../NeuralAmpModelerControls.h; sourceTree = "<group>"; };
-		4FA61F7A22E89A2700A92C58 /* NeuralAmpModeler-iOS-AUv3Framework-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "NeuralAmpModeler-iOS-AUv3Framework-Info.plist"; path = "../resources/NeuralAmpModeler-iOS-AUv3Framework-Info.plist"; sourceTree = "<group>"; };
+		4FA61F7A22E89A2700A92C58 /* pedaldivision-nam-iOS-AUv3Framework-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "pedaldivision-nam-iOS-AUv3Framework-Info.plist"; path = "../resources/pedaldivision-nam-iOS-AUv3Framework-Info.plist"; sourceTree = "<group>"; };
 		4FA61F7B22E89A5900A92C58 /* NeuralAmpModelerAU.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = NeuralAmpModelerAU.h; path = ../resources/NeuralAmpModelerAU.h; sourceTree = "<group>"; };
 		4FA758452186222E00F1BCC3 /* IPlugPaths.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = IPlugPaths.mm; path = ../../iPlug2/IPlug/IPlugPaths.mm; sourceTree = "<group>"; };
-		4FB2269620A0D3A800614769 /* NeuralAmpModeler-iOS-LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = "NeuralAmpModeler-iOS-LaunchScreen.storyboard"; path = "../resources/NeuralAmpModeler-iOS-LaunchScreen.storyboard"; sourceTree = "<group>"; };
+		4FB2269620A0D3A800614769 /* pedaldivision-nam-iOS-LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = "pedaldivision-nam-iOS-LaunchScreen.storyboard"; path = "../resources/pedaldivision-nam-iOS-LaunchScreen.storyboard"; sourceTree = "<group>"; };
 		4FBBD7F420B6ABE700A37DE2 /* config */ = {isa = PBXFileReference; lastKnownFileType = folder; name = config; path = ../config; sourceTree = "<group>"; };
 		4FBDC93329FFF143004FF203 /* Resample.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Resample.h; sourceTree = "<group>"; };
 		4FBDC93429FFF143004FF203 /* RecursiveLinearFilter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RecursiveLinearFilter.cpp; sourceTree = "<group>"; };
@@ -362,8 +362,8 @@
 		4FFF108420A1036200D3092F /* config.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = config.h; path = ../config.h; sourceTree = "<group>"; };
 		4FFF108720A1036200D3092F /* NeuralAmpModeler.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = NeuralAmpModeler.cpp; path = ../NeuralAmpModeler.cpp; sourceTree = "<group>"; };
 		4FFF108820A1036200D3092F /* NeuralAmpModeler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = NeuralAmpModeler.h; path = ../NeuralAmpModeler.h; sourceTree = "<group>"; };
-		91236D0D1B08F42B00734C5E /* NeuralAmpModeler.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NeuralAmpModeler.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		91236D771B08F59300734C5E /* NeuralAmpModelerAppExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NeuralAmpModelerAppExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		91236D0D1B08F42B00734C5E /* pedaldivision-nam.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = pedaldivision-nam.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		91236D771B08F59300734C5E /* pedaldivision-namAppExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = pedaldivision-namAppExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA341E292B9E5A650069C260 /* ToneStack.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ToneStack.h; path = ../ToneStack.h; sourceTree = "<group>"; };
 		AA341E2A2B9E5A650069C260 /* ToneStack.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ToneStack.cpp; path = ../ToneStack.cpp; sourceTree = "<group>"; };
 		AA7C86042B43A42E00B5FB3A /* ResamplingContainer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ResamplingContainer.h; sourceTree = "<group>"; };
@@ -640,12 +640,12 @@
 				4FC46E58231440C8000045E7 /* web */,
 				4F10E7C520B189DD00F5B09B /* NeuralAmpModeler-iOS.entitlements */,
 				4F3E0F6820A0BCAF00A9C2BE /* Images.xcassets */,
-				4F3E0F6720A0BC5B00A9C2BE /* NeuralAmpModeler-iOS.storyboard */,
-				4FB2269620A0D3A800614769 /* NeuralAmpModeler-iOS-LaunchScreen.storyboard */,
-				4F10E7BF20B17EDB00F5B09B /* NeuralAmpModeler-iOS-MainInterface.storyboard */,
-				4F3E0F6420A0BC1C00A9C2BE /* NeuralAmpModeler-iOS-Info.plist */,
-				4F3E0F6520A0BC4000A9C2BE /* NeuralAmpModeler-iOS-AUv3-Info.plist */,
-				4FA61F7A22E89A2700A92C58 /* NeuralAmpModeler-iOS-AUv3Framework-Info.plist */,
+				4F3E0F6720A0BC5B00A9C2BE /* pedaldivision-nam-iOS.storyboard */,
+				4FB2269620A0D3A800614769 /* pedaldivision-nam-iOS-LaunchScreen.storyboard */,
+				4F10E7BF20B17EDB00F5B09B /* pedaldivision-nam-iOS-MainInterface.storyboard */,
+				4F3E0F6420A0BC1C00A9C2BE /* pedaldivision-nam-iOS-Info.plist */,
+				4F3E0F6520A0BC4000A9C2BE /* pedaldivision-nam-iOS-AUv3-Info.plist */,
+				4FA61F7A22E89A2700A92C58 /* pedaldivision-nam-iOS-AUv3Framework-Info.plist */,
 				4FA61F7B22E89A5900A92C58 /* NeuralAmpModelerAU.h */,
 				4F4856832773BD77005BCF8E /* NeuralAmpModelerAUv3Appex.m */,
 			);
@@ -803,8 +803,8 @@
 		91D3DA171B023C1E008FFFBB /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				91236D0D1B08F42B00734C5E /* NeuralAmpModeler.app */,
-				91236D771B08F59300734C5E /* NeuralAmpModelerAppExtension.appex */,
+				91236D0D1B08F42B00734C5E /* pedaldivision-nam.app */,
+				91236D771B08F59300734C5E /* pedaldivision-namAppExtension.appex */,
 				4FC6982F293BA47F0076EC33 /* NeuralAmpModelerAU.framework */,
 			);
 			name = Products;
@@ -925,7 +925,7 @@
 			);
 			name = App;
 			productName = "FilterDemoApp-iOS";
-			productReference = 91236D0D1B08F42B00734C5E /* NeuralAmpModeler.app */;
+			productReference = 91236D0D1B08F42B00734C5E /* pedaldivision-nam.app */;
 			productType = "com.apple.product-type.application";
 		};
 		91236D761B08F59300734C5E /* AUv3 */ = {
@@ -942,7 +942,7 @@
 			);
 			name = AUv3;
 			productName = "FilterDemoAppExtension-iOS";
-			productReference = 91236D771B08F59300734C5E /* NeuralAmpModelerAppExtension.appex */;
+			productReference = 91236D771B08F59300734C5E /* pedaldivision-namAppExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -1022,10 +1022,10 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4F1115CF2296DA95000CFCBF /* NeuralAmpModeler-iOS-MainInterface.storyboard in Resources */,
+				4F1115CF2296DA95000CFCBF /* pedaldivision-nam-iOS-MainInterface.storyboard in Resources */,
 				4F3E0F6B20A0BCE300A9C2BE /* Images.xcassets in Resources */,
-				4FB2269720A0D3A800614769 /* NeuralAmpModeler-iOS-LaunchScreen.storyboard in Resources */,
-				4F3E0F6A20A0BCD900A9C2BE /* NeuralAmpModeler-iOS.storyboard in Resources */,
+				4FB2269720A0D3A800614769 /* pedaldivision-nam-iOS-LaunchScreen.storyboard in Resources */,
+				4F3E0F6A20A0BCD900A9C2BE /* pedaldivision-nam-iOS.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1033,7 +1033,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4F10E7C020B17EDB00F5B09B /* NeuralAmpModeler-iOS-MainInterface.storyboard in Resources */,
+				4F10E7C020B17EDB00F5B09B /* pedaldivision-nam-iOS-MainInterface.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1195,7 +1195,7 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "$(SRCROOT)/../resources/NeuralAmpModeler-iOS-AUv3Framework-Info.plist";
+				INFOPLIST_FILE = "$(SRCROOT)/../resources/pedaldivision-nam-iOS-AUv3Framework-Info.plist";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1206,7 +1206,7 @@
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.StevenAtkinson.NeuralAmpModeler.AUv3Framework;
+				PRODUCT_BUNDLE_IDENTIFIER = com.PedalDivision.pedaldivision-nam.AUv3Framework;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -1254,7 +1254,7 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "$(SRCROOT)/../resources/NeuralAmpModeler-iOS-AUv3Framework-Info.plist";
+				INFOPLIST_FILE = "$(SRCROOT)/../resources/pedaldivision-nam-iOS-AUv3Framework-Info.plist";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1265,7 +1265,7 @@
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.StevenAtkinson.NeuralAmpModeler.AUv3Framework;
+				PRODUCT_BUNDLE_IDENTIFIER = com.PedalDivision.pedaldivision-nam.AUv3Framework;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -1314,15 +1314,15 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = NO;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				INFOPLIST_FILE = "$(SRCROOT)/../resources/NeuralAmpModeler-iOS-Info.plist";
+				INFOPLIST_FILE = "$(SRCROOT)/../resources/pedaldivision-nam-iOS-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.StevenAtkinson.NeuralAmpModeler;
-				PRODUCT_NAME = NeuralAmpModeler;
+				PRODUCT_BUNDLE_IDENTIFIER = com.PedalDivision.pedaldivision-nam;
+				PRODUCT_NAME = pedaldivision-nam;
 				SDKROOT = iphoneos;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 4.2;
@@ -1365,14 +1365,14 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = NO;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				INFOPLIST_FILE = "$(SRCROOT)/../resources/NeuralAmpModeler-iOS-Info.plist";
+				INFOPLIST_FILE = "$(SRCROOT)/../resources/pedaldivision-nam-iOS-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MTL_ENABLE_DEBUG_INFO = NO;
-				PRODUCT_BUNDLE_IDENTIFIER = com.StevenAtkinson.NeuralAmpModeler;
-				PRODUCT_NAME = NeuralAmpModeler;
+				PRODUCT_BUNDLE_IDENTIFIER = com.PedalDivision.pedaldivision-nam;
+				PRODUCT_NAME = pedaldivision-nam;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -1417,7 +1417,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = NO;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				INFOPLIST_FILE = "$(SRCROOT)/../resources/NeuralAmpModeler-iOS-AUv3-Info.plist";
+				INFOPLIST_FILE = "$(SRCROOT)/../resources/pedaldivision-nam-iOS-AUv3-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1425,8 +1425,8 @@
 				);
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.StevenAtkinson.NeuralAmpModeler.AUv3;
-				PRODUCT_NAME = NeuralAmpModelerAppExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.PedalDivision.pedaldivision-nam.AUv3;
+				PRODUCT_NAME = pedaldivision-namAppExtension;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -1467,15 +1467,15 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = NO;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				INFOPLIST_FILE = "$(SRCROOT)/../resources/NeuralAmpModeler-iOS-AUv3-Info.plist";
+				INFOPLIST_FILE = "$(SRCROOT)/../resources/pedaldivision-nam-iOS-AUv3-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
 				MTL_ENABLE_DEBUG_INFO = NO;
-				PRODUCT_BUNDLE_IDENTIFIER = com.StevenAtkinson.NeuralAmpModeler.AUv3;
-				PRODUCT_NAME = NeuralAmpModelerAppExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.PedalDivision.pedaldivision-nam.AUv3;
+				PRODUCT_NAME = pedaldivision-namAppExtension;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;

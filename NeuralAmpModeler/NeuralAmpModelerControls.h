@@ -1,11 +1,23 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath> // std::round
 #include <cstdio> // FILE, fclose
+#include <cstdint>
+#include <cctype>
+#include <filesystem>
+#include <functional>
+#include <limits>
 #include <sstream> // std::stringstream
 #include <unordered_map> // std::unordered_map
+#include <vector>
 #include "IControls.h"
 #include "IPlugPaths.h"
+
+#ifdef OS_MAC
+  #include <CoreFoundation/CoreFoundation.h>
+  #include <ImageIO/ImageIO.h>
+#endif
 
 #ifdef OS_WIN
   #include <Windows.h>
@@ -96,14 +108,23 @@ public:
   : IVKnobControl(bounds, paramIdx, label, style, true)
   , IBitmapBase(bitmap)
   {
-    mInnerPointerFrac = 0.55;
+    mInnerPointerFrac = 0.75f;
+    mTrackSize = 1.f;
   }
 
   void OnRescale() override { mBitmap = GetUI()->GetScaledBitmap(mBitmap); }
 
+  void DrawIndicatorTrack(IGraphics& g, float angle, float cx, float cy, float radius) override
+  {
+    if (mTrackSize > 0.f)
+      g.DrawArc(COLOR_BLACK, cx, cy, radius, std::min(angle, mAnchorAngle), std::max(angle, mAnchorAngle), &mBlend,
+                mTrackSize);
+  }
+
   void DrawWidget(IGraphics& g) override
   {
-    float widgetRadius = GetRadius() * 0.73;
+    static constexpr float indicatorRadius = 3.f;
+    float widgetRadius = GetRadius() * 1.f;
     auto knobRect = mWidgetBounds.GetCentredInside(mWidgetBounds.W(), mWidgetBounds.W());
     const float cx = knobRect.MW(), cy = knobRect.MH();
     const float angle = mAngle1 + (static_cast<float>(GetValue()) * (mAngle2 - mAngle1));
@@ -111,13 +132,7 @@ public:
     g.DrawFittedBitmap(mBitmap, knobRect);
     float data[2][2];
     RadialPoints(angle, cx, cy, mInnerPointerFrac * widgetRadius, mInnerPointerFrac * widgetRadius, 2, data);
-    g.PathCircle(data[1][0], data[1][1], 3);
-    g.PathFill(IPattern::CreateRadialGradient(data[1][0], data[1][1], 4.0f,
-                                              {{GetColor(mMouseIsOver ? kX3 : kX1), 0.f},
-                                               {GetColor(mMouseIsOver ? kX3 : kX1), 0.8f},
-                                               {COLOR_TRANSPARENT, 1.0f}}),
-               {}, &mBlend);
-    g.DrawCircle(COLOR_BLACK.WithOpacity(0.5f), data[1][0], data[1][1], 3, &mBlend);
+    g.FillCircle(COLOR_BLACK, data[1][0], data[1][1], indicatorRadius, &mBlend);
   }
 };
 
@@ -147,6 +162,7 @@ public:
 
   void DrawTrack(IGraphics& g, const IRECT& bounds) override
   {
+    const IColor activeTrackColor(255, 218, 218, 218);
     IRECT handleBounds = GetAdjustedHandleBounds(bounds);
     handleBounds = IRECT(handleBounds.L, handleBounds.T, handleBounds.R, handleBounds.T + mBitmap.H());
     IRECT centreBounds = handleBounds.GetPadded(-mStyle.shadowOffset);
@@ -172,7 +188,7 @@ public:
       g.FillRoundRect(GetColor(kSH), shadowBounds, tlr, trr, blr, brr /*, &blend*/);
 
       // Fill in foreground
-      g.FillRoundRect(GetValue() > 0.5 ? GetColor(kX1) : COLOR_BLACK, centreBounds, tlr, trr, blr, brr, &mBlend);
+      g.FillRoundRect(GetValue() > 0.5 ? activeTrackColor : COLOR_BLACK, centreBounds, tlr, trr, blr, brr, &mBlend);
 
       // Shade when hovered
       if (mMouseIsOver)
@@ -180,7 +196,7 @@ public:
     }
     else
     {
-      g.FillRoundRect(GetValue() > 0.5 ? GetColor(kX1) : COLOR_BLACK, handleBounds, tlr, trr, blr, brr /*, &blend*/);
+      g.FillRoundRect(GetValue() > 0.5 ? activeTrackColor : COLOR_BLACK, handleBounds, tlr, trr, blr, brr /*, &blend*/);
 
       // Shade when hovered
       if (mMouseIsOver)
@@ -244,31 +260,14 @@ public:
   }
 };
 
-// URL control for the "Get" models/irs links
-class NAMGetButtonControl : public NAMSquareButtonControl
-{
-public:
-  NAMGetButtonControl(const IRECT& bounds, const char* label, const char* url, const ISVG& globeSVG)
-  : NAMSquareButtonControl(
-      bounds,
-      [url](IControl* pCaller) {
-        WDL_String fullURL(url);
-        pCaller->GetUI()->OpenURL(fullURL.Get());
-      },
-      globeSVG)
-  {
-    SetTooltip(label);
-  }
-};
-
 class NAMFileBrowserControl : public IDirBrowseControlBase
 {
 public:
   NAMFileBrowserControl(const IRECT& bounds, int clearMsgTag, const char* labelStr, const char* fileExtension,
                         IFileDialogCompletionHandlerFunc ch, const IVStyle& style, const ISVG& loadSVG,
                         const ISVG& clearSVG, const ISVG& leftSVG, const ISVG& rightSVG, const IBitmap& bitmap,
-                        const ISVG& globeSVG, const char* getButtonLabel, const char* getButtonURL)
-  : IDirBrowseControlBase(bounds, fileExtension, false, false)
+                        bool scanRecursively = false)
+  : IDirBrowseControlBase(bounds, fileExtension, false, scanRecursively)
   , mClearMsgTag(clearMsgTag)
   , mDefaultLabelStr(labelStr)
   , mCompletionHandlerFunc(ch)
@@ -278,15 +277,16 @@ public:
   , mClearSVG(clearSVG)
   , mLeftSVG(leftSVG)
   , mRightSVG(rightSVG)
-  , mGlobeSVG(globeSVG)
-  , mGetButtonLabel(getButtonLabel)
-  , mGetButtonURL(getButtonURL)
   , mBrowserState(NAMBrowserState::Empty)
   {
     mIgnoreMouse = true;
   }
 
-  void Draw(IGraphics& g) override { g.DrawFittedBitmap(mBitmap, mRECT); }
+  void Draw(IGraphics& g) override
+  {
+    g.FillRoundRect(COLOR_WHITE, mRECT, 5.f);
+    g.DrawRoundRect(PluginColors::NAM_THEMECOLOR.WithOpacity(0.22f), mRECT, 5.f, &mBlend, 1.f);
+  }
 
   void OnPopupMenuSelection(IPopupMenu* pSelectedMenu, int valIdx) override
   {
@@ -386,7 +386,7 @@ public:
     IRECT padded = mRECT.GetPadded(-6.f).GetHPadded(-2.f);
     const auto buttonWidth = padded.H();
     const auto loadFileButtonBounds = padded.ReduceFromLeft(buttonWidth);
-    const auto clearAndGetButtonBounds = padded.ReduceFromRight(buttonWidth);
+    const auto clearButtonBounds = padded.ReduceFromRight(buttonWidth);
     const auto leftButtonBounds = padded.ReduceFromLeft(buttonWidth);
     const auto rightButtonBounds = padded.ReduceFromLeft(buttonWidth);
     const auto fileNameButtonBounds = padded;
@@ -400,13 +400,9 @@ public:
     AddChildControl(mFileNameControl = new NAMFileNameControl(fileNameButtonBounds, mDefaultLabelStr.Get(), mStyle))
       ->SetAnimationEndActionFunction(chooseFileFunc);
 
-    // creates both right-side controls but only show one based on state
-    mClearButton = new NAMSquareButtonControl(clearAndGetButtonBounds, DefaultClickActionFunc, mClearSVG);
+    mClearButton = new NAMSquareButtonControl(clearButtonBounds, DefaultClickActionFunc, mClearSVG);
     mClearButton->SetAnimationEndActionFunction(clearFileFunc);
     AddChildControl(mClearButton);
-
-    mGetButton = new NAMGetButtonControl(clearAndGetButtonBounds, mGetButtonLabel, mGetButtonURL, mGlobeSVG);
-    AddChildControl(mGetButton);
 
     // initialize control visibility
     SetBrowserState(NAMBrowserState::Empty);
@@ -421,6 +417,18 @@ public:
       mFileNameControl->SetLabelAndTooltipEllipsizing(fileName);
       mCompletionHandlerFunc(fileName, path);
     }
+  }
+
+  void LoadDirectory(const char* directory)
+  {
+    if (!CStringHasContents(directory))
+      return;
+
+    ClearPathList();
+    AddPath(directory, "");
+    SetupMenu();
+    SelectFirstFile();
+    LoadFileAtCurrentIndex();
   }
 
   void OnMsgFromDelegate(int msgTag, int dataSize, const void* pData) override
@@ -465,7 +473,7 @@ private:
     return;
   }
 
-  // set the state of the browser and the visibility of the "Get" vs. "Clear" buttons
+  // set the state of the browser and the visibility of the clear button
   void SetBrowserState(NAMBrowserState newState)
   {
     mBrowserState = newState;
@@ -474,11 +482,9 @@ private:
     {
       case NAMBrowserState::Empty:
         mClearButton->Hide(true);
-        mGetButton->Hide(false);
         break;
       case NAMBrowserState::Loaded:
         mClearButton->Hide(false);
-        mGetButton->Hide(true);
         break;
     }
   }
@@ -488,15 +494,1482 @@ private:
   NAMFileNameControl* mFileNameControl = nullptr;
   IVStyle mStyle;
   IBitmap mBitmap;
-  ISVG mLoadSVG, mClearSVG, mLeftSVG, mRightSVG, mGlobeSVG;
+  ISVG mLoadSVG, mClearSVG, mLeftSVG, mRightSVG;
   int mClearMsgTag;
 
-  // new members for the "Get" button
-  const char* mGetButtonLabel;
-  const char* mGetButtonURL;
   NAMBrowserState mBrowserState;
   NAMSquareButtonControl* mClearButton = nullptr;
-  NAMGetButtonControl* mGetButton = nullptr;
+};
+
+class NAMModelThumbnailControl : public IControl
+{
+public:
+  NAMModelThumbnailControl(const IRECT& bounds)
+  : IControl(bounds)
+  {
+  }
+
+  void SetNAMRootDirectory(const char* directory)
+  {
+    mNAMRootDirectory = NormalizePath(directory);
+
+    if (!mLoadedModelPath.empty())
+      LoadThumbnailForModelPath(mLoadedModelPath);
+  }
+
+  void OnMsgFromDelegate(int msgTag, int dataSize, const void* pData) override
+  {
+    switch (msgTag)
+    {
+      case kMsgTagLoadedModel:
+        if (pData != nullptr)
+        {
+          mLoadedModelPath = NormalizePath(reinterpret_cast<const char*>(pData));
+          LoadThumbnailForModelPath(mLoadedModelPath);
+        }
+        break;
+      case kMsgTagClearModel:
+        mLoadedModelPath.clear();
+        SetThumbnailPath("");
+        break;
+      default: break;
+    }
+  }
+
+  void Draw(IGraphics& g) override
+  {
+    const IColor placeholderColor(255, 255, 255, 255);
+    const IColor borderColor(255, 214, 214, 214);
+    g.FillRoundRect(placeholderColor, mRECT, 5.f);
+
+    const IBitmap thumbnail = GetThumbnail();
+    if (thumbnail.IsValid())
+      g.DrawFittedBitmap(thumbnail, GetAspectFitRect(thumbnail, mRECT.GetPadded(-2.f)), &mBlend);
+
+    g.DrawRoundRect(borderColor, mRECT, 5.f, &mBlend, 1.f);
+  }
+
+private:
+  static std::string ToLower(std::string s)
+  {
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return s;
+  }
+
+  static bool IsImageFile(const std::filesystem::path& path)
+  {
+    const std::string ext = ToLower(path.extension().string());
+    return ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp";
+  }
+
+  static bool CanLoadThumbnailFile(const std::filesystem::path& path)
+  {
+    const std::string ext = ToLower(path.extension().string());
+    return ext == ".jpg" || ext == ".jpeg" || ext == ".png";
+  }
+
+  static bool IsWebPFile(const std::filesystem::path& path)
+  {
+    return ToLower(path.extension().string()) == ".webp";
+  }
+
+#ifdef OS_MAC
+	  static bool EncodeImageAsPNG(const std::filesystem::path& path, std::vector<uint8_t>& data)
+	  {
+	    data.clear();
+
+    const std::string pathString = path.string();
+    CFURLRef url = CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault,
+                                                           reinterpret_cast<const UInt8*>(pathString.c_str()),
+                                                           static_cast<CFIndex>(pathString.size()),
+                                                           false);
+    if (url == nullptr)
+      return false;
+
+    CGImageSourceRef source = CGImageSourceCreateWithURL(url, nullptr);
+    CFRelease(url);
+
+    if (source == nullptr)
+      return false;
+
+    CGImageRef image = CGImageSourceCreateImageAtIndex(source, 0, nullptr);
+    CFRelease(source);
+
+	    if (image == nullptr)
+	      return false;
+
+	    if (CGImageGetWidth(image) == 0 || CGImageGetHeight(image) == 0)
+	    {
+	      CGImageRelease(image);
+	      return false;
+	    }
+
+	    if (CGImageGetWidth(image) == 0 || CGImageGetHeight(image) == 0)
+	    {
+	      CGImageRelease(image);
+	      return false;
+	    }
+
+    CFMutableDataRef pngData = CFDataCreateMutable(kCFAllocatorDefault, 0);
+    if (pngData == nullptr)
+    {
+      CGImageRelease(image);
+      return false;
+    }
+
+    CGImageDestinationRef destination = CGImageDestinationCreateWithData(pngData, CFSTR("public.png"), 1, nullptr);
+    if (destination == nullptr)
+    {
+      CFRelease(pngData);
+      CGImageRelease(image);
+      return false;
+    }
+
+    CGImageDestinationAddImage(destination, image, nullptr);
+    const bool ok = CGImageDestinationFinalize(destination);
+    CFRelease(destination);
+    CGImageRelease(image);
+
+    if (ok)
+    {
+      const CFIndex size = CFDataGetLength(pngData);
+      if (size > 0 && size <= std::numeric_limits<int>::max())
+      {
+        const UInt8* bytes = CFDataGetBytePtr(pngData);
+        data.assign(bytes, bytes + size);
+      }
+    }
+
+    CFRelease(pngData);
+    return !data.empty();
+  }
+#endif
+
+  static IRECT GetAspectFitRect(const IBitmap& bitmap, const IRECT& bounds)
+  {
+    const float bitmapWidth = static_cast<float>(bitmap.W());
+    const float bitmapHeight = static_cast<float>(bitmap.H());
+
+    if (bitmapWidth <= 0.f || bitmapHeight <= 0.f || bounds.W() <= 0.f || bounds.H() <= 0.f)
+      return bounds;
+
+    const float scale = std::min(bounds.W() / bitmapWidth, bounds.H() / bitmapHeight);
+    return bounds.GetCentredInside(bitmapWidth * scale, bitmapHeight * scale);
+  }
+
+  static std::string PathString(const std::filesystem::path& path)
+  {
+    return path.lexically_normal().string();
+  }
+
+  static std::string NormalizePath(const char* path)
+  {
+    if (!CStringHasContents(path))
+      return "";
+
+    try
+    {
+      return PathString(std::filesystem::u8path(path));
+    }
+    catch (...)
+    {
+      return path;
+    }
+  }
+
+  static bool PathStartsWith(const std::filesystem::path& path, const std::filesystem::path& prefix)
+  {
+    auto pathIt = path.begin();
+
+    for (auto prefixIt = prefix.begin(); prefixIt != prefix.end(); ++prefixIt, ++pathIt)
+    {
+      if (pathIt == path.end() || *pathIt != *prefixIt)
+        return false;
+    }
+
+    return true;
+  }
+
+  static bool FindFirstImage(const std::filesystem::path& directory, std::filesystem::path& result)
+  {
+    std::vector<std::filesystem::directory_entry> entries;
+    std::error_code ec;
+
+    for (std::filesystem::directory_iterator it(directory, std::filesystem::directory_options::skip_permission_denied,
+                                                ec),
+         end;
+         !ec && it != end; it.increment(ec))
+    {
+      entries.push_back(*it);
+    }
+
+    std::sort(entries.begin(), entries.end(), [](const auto& a, const auto& b) {
+      return ToLower(a.path().filename().string()) < ToLower(b.path().filename().string());
+    });
+
+    for (const auto& entry : entries)
+    {
+      std::error_code entryError;
+      if (entry.is_regular_file(entryError) && IsImageFile(entry.path()))
+      {
+        result = entry.path();
+        return true;
+      }
+    }
+
+    for (const auto& entry : entries)
+    {
+      std::error_code entryError;
+      if (entry.is_symlink(entryError))
+        continue;
+
+      entryError.clear();
+      if (entry.is_directory(entryError) && FindFirstImage(entry.path(), result))
+        return true;
+    }
+
+    return false;
+  }
+
+  std::filesystem::path GetThumbnailSearchDirectory(const std::string& modelPath) const
+  {
+    const auto model = std::filesystem::u8path(modelPath).lexically_normal();
+    const auto modelDirectory = model.parent_path();
+
+    if (mNAMRootDirectory.empty())
+      return modelDirectory;
+
+    const auto root = std::filesystem::u8path(mNAMRootDirectory).lexically_normal();
+    if (!PathStartsWith(model, root))
+      return modelDirectory;
+
+    const auto relative = model.lexically_relative(root);
+    auto firstPart = relative.begin();
+    if (firstPart == relative.end())
+      return modelDirectory;
+
+    auto secondPart = firstPart;
+    ++secondPart;
+    if (secondPart == relative.end())
+      return root;
+
+    return root / *firstPart;
+  }
+
+  void LoadThumbnailForModelPath(const std::string& modelPath)
+  {
+    if (modelPath.empty())
+    {
+      SetThumbnailPath("");
+      return;
+    }
+
+    std::error_code ec;
+    const auto searchDirectory = GetThumbnailSearchDirectory(modelPath);
+    if (!std::filesystem::is_directory(searchDirectory, ec))
+    {
+      SetThumbnailPath("");
+      return;
+    }
+
+    std::filesystem::path thumbnailPath;
+    if (FindFirstImage(searchDirectory, thumbnailPath))
+      SetThumbnailPath(PathString(thumbnailPath));
+    else
+      SetThumbnailPath("");
+  }
+
+  void SetThumbnailPath(const std::string& path)
+  {
+    if (path == mThumbnailPath)
+      return;
+
+    mThumbnailPath = path;
+    mThumbnail = IBitmap();
+    mThumbnailData.clear();
+    mThumbnailCacheName.clear();
+    SetDirty(false);
+  }
+
+	  IBitmap GetThumbnail()
+	  {
+	    if (mThumbnail.IsValid() || mThumbnailPath.empty())
+	      return mThumbnail;
+
+	    std::error_code ec;
+	    const auto path = std::filesystem::u8path(mThumbnailPath);
+	    if (std::filesystem::is_regular_file(path, ec))
+	    {
+#ifdef OS_MAC
+	      if (IsImageFile(path) && EncodeImageAsPNG(path, mThumbnailData))
+	      {
+	        mThumbnailCacheName = mThumbnailPath + ".decoded.png";
+	        mThumbnail = GetUI()->LoadBitmap(mThumbnailCacheName.c_str(), mThumbnailData.data(),
+	                                         static_cast<int>(mThumbnailData.size()), 1, false, 1);
+	      }
+#else
+	      if (CanLoadThumbnailFile(path))
+	        mThumbnail = GetUI()->LoadBitmap(mThumbnailPath.c_str());
+#endif
+	    }
+
+	    if (mThumbnail.IsValid() && (mThumbnail.W() <= 0 || mThumbnail.H() <= 0))
+	      mThumbnail = IBitmap();
+
+	    return mThumbnail;
+	  }
+
+  std::string mNAMRootDirectory;
+  std::string mLoadedModelPath;
+  std::string mThumbnailPath;
+  std::string mThumbnailCacheName;
+  std::vector<uint8_t> mThumbnailData;
+  IBitmap mThumbnail;
+};
+
+class NAMLibraryDrawerButtonControl : public IControl
+{
+public:
+  NAMLibraryDrawerButtonControl(const IRECT& bounds, int sidebarTag)
+  : IControl(bounds)
+  , mSidebarTag(sidebarTag)
+  {
+    SetTooltip("Library");
+  }
+
+  void Draw(IGraphics& g) override
+  {
+    const IColor borderColor(255, 214, 214, 214);
+    const IColor hoverColor(255, 244, 244, 244);
+    const IColor inkColor(255, 20, 20, 20);
+    const auto bg = mMouseIsOver ? hoverColor : COLOR_WHITE;
+
+    g.FillRoundRect(bg, mRECT, 5.f);
+    g.DrawRoundRect(borderColor, mRECT, 5.f, &mBlend, 1.f);
+
+    const auto icon = mRECT.GetPadded(-8.f);
+    const float lineLeft = icon.L;
+    const float lineRight = icon.MW() + 1.f;
+    const float lineY = icon.T + 3.f;
+    g.DrawLine(inkColor, lineLeft, lineY, lineRight, lineY, &mBlend, 1.5f);
+    g.DrawLine(inkColor, lineLeft, icon.MH(), lineRight, icon.MH(), &mBlend, 1.5f);
+    g.DrawLine(inkColor, lineLeft, icon.B - 3.f, lineRight, icon.B - 3.f, &mBlend, 1.5f);
+
+    if (IsDrawerOpen())
+      g.FillTriangle(inkColor, icon.R, icon.T + 2.f, icon.R, icon.B - 2.f, icon.MW() + 4.f, icon.MH(), &mBlend);
+    else
+      g.FillTriangle(inkColor, icon.MW() + 4.f, icon.T + 2.f, icon.MW() + 4.f, icon.B - 2.f, icon.R, icon.MH(), &mBlend);
+  }
+
+  void OnMouseDown(float x, float y, const IMouseMod& mod) override
+  {
+    if (auto* ui = GetUI())
+    {
+      if (auto* sidebar = ui->GetControlWithTag(mSidebarTag))
+      {
+        sidebar->Hide(!sidebar->IsHidden());
+        ui->SetAllControlsDirty();
+      }
+    }
+  }
+
+private:
+  bool IsDrawerOpen() const
+  {
+    if (auto* ui = GetUI())
+    {
+      if (auto* sidebar = ui->GetControlWithTag(mSidebarTag))
+        return !sidebar->IsHidden();
+    }
+
+    return false;
+  }
+
+  int mSidebarTag;
+};
+
+class NAMLibrarySidebarControl : public IControl
+{
+public:
+  using LoadDirectoryFunc = std::function<void(const char*)>;
+
+  NAMLibrarySidebarControl(const IRECT& bounds, LoadDirectoryFunc loadNAMDirectory, LoadDirectoryFunc loadIRDirectory)
+  : IControl(bounds)
+  , mLoadNAMDirectory(std::move(loadNAMDirectory))
+  , mLoadIRDirectory(std::move(loadIRDirectory))
+  {
+  }
+
+  void SetRoots(const char* namRootDirectory, const char* irRootDirectory)
+  {
+    const std::string namRoot = NormalizePath(namRootDirectory);
+    const std::string irRoot = NormalizePath(irRootDirectory);
+
+    if (namRoot == mNAMRootDirectory && irRoot == mIRRootDirectory)
+      return;
+
+    mNAMRootDirectory = namRoot;
+    mIRRootDirectory = irRoot;
+    Rescan();
+    SetDirty(false);
+  }
+
+  void OnMsgFromDelegate(int msgTag, int dataSize, const void* pData) override
+  {
+    if (pData == nullptr)
+      return;
+
+    switch (msgTag)
+    {
+      case kMsgTagLoadedModel:
+        mSelectedNAMDirectory = ParentDirectory(reinterpret_cast<const char*>(pData));
+        SetDirty(false);
+        break;
+      case kMsgTagLoadedIR:
+        mSelectedIRDirectory = ParentDirectory(reinterpret_cast<const char*>(pData));
+        SetDirty(false);
+        break;
+      default: break;
+    }
+  }
+
+  void Draw(IGraphics& g) override
+  {
+    g.FillRoundRect(COLOR_WHITE, mRECT, 6.f);
+    g.DrawRoundRect(PluginColors::NAM_THEMECOLOR.WithOpacity(0.22f), mRECT, 6.f, &mBlend, 1.f);
+    const auto splitLine = IRECT(mRECT.L + 1.f, GetLibraryArea(LibraryKind::IR).T, mRECT.R - 1.f,
+                                 GetLibraryArea(LibraryKind::IR).T + 1.f);
+    g.FillRect(PluginColors::NAM_THEMECOLOR.WithOpacity(0.22f), splitLine);
+
+    mRows.clear();
+    const IText sectionText(14.f, COLOR_BLACK, "Roboto-Regular", EAlign::Near, EVAlign::Middle);
+    const IText rowText(11.f, PluginColors::NAM_THEMEFONTCOLOR, "Roboto-Regular", EAlign::Near);
+    const IText cardTitleText(10.f, PluginColors::NAM_THEMEFONTCOLOR, "Roboto-Regular", EAlign::Center,
+                              EVAlign::Middle);
+    const IText mutedText(10.f, PluginColors::NAM_THEMEFONTCOLOR.WithOpacity(0.58f), "Roboto-Regular", EAlign::Near);
+
+    DrawLibrary(g, LibraryKind::NAM, mNAMRootDirectory, mNAMFolders, mNAMReadError, mNAMScroll, mNAMContentHeight,
+                rowText, mutedText, cardTitleText);
+    DrawLibrary(g, LibraryKind::IR, mIRRootDirectory, mIRFolders, mIRReadError, mIRScroll, mIRContentHeight, rowText,
+                mutedText, cardTitleText);
+    DrawSectionTitle(g, LibraryKind::NAM, "Amps", sectionText);
+    DrawSectionTitle(g, LibraryKind::IR, "Cabs", sectionText);
+  }
+
+  void OnMouseDown(float x, float y, const IMouseMod& mod) override
+  {
+    for (auto& row : mRows)
+    {
+      if (!row.rect.Contains(x, y) || row.type != RowType::Folder || row.node == nullptr)
+        continue;
+      if (!GetListArea(row.kind).Contains(x, y))
+        continue;
+
+      if (row.expandable)
+      {
+        row.node->expanded = !row.node->expanded;
+        SetDirty(false);
+        return;
+      }
+
+      if (!row.loadable)
+        return;
+
+      if (row.kind == LibraryKind::NAM)
+      {
+        mSelectedNAMDirectory = row.node->path;
+        if (mLoadNAMDirectory)
+          mLoadNAMDirectory(row.node->path.c_str());
+      }
+      else
+      {
+        mSelectedIRDirectory = row.node->path;
+        if (mLoadIRDirectory)
+          mLoadIRDirectory(row.node->path.c_str());
+      }
+
+      CloseDrawer();
+      SetDirty(false);
+      return;
+    }
+  }
+
+  void OnMouseWheel(float x, float y, const IMouseMod& mod, float d) override
+  {
+    LibraryKind kind;
+    if (!GetKindAtPoint(x, y, kind))
+      return;
+
+    const IRECT listArea = GetListArea(kind);
+    float& scroll = ScrollForKind(kind);
+    const float contentHeight = ContentHeightForKind(kind);
+    if (contentHeight <= listArea.H())
+      return;
+
+    scroll -= d * 24.f;
+    ClampScroll(scroll, contentHeight, listArea);
+    SetDirty(false);
+  }
+
+  void OnMouseOver(float x, float y, const IMouseMod& mod) override
+  {
+    IControl::OnMouseOver(x, y, mod);
+    mMouseX = x;
+    mMouseY = y;
+    SetDirty(false);
+  }
+
+  void OnMouseOut() override
+  {
+    IControl::OnMouseOut();
+    mMouseX = -1.f;
+    mMouseY = -1.f;
+    SetDirty(false);
+  }
+
+private:
+  enum class LibraryKind
+  {
+    NAM,
+    IR
+  };
+
+  enum class RowType
+  {
+    Section,
+    Empty,
+    Folder
+  };
+
+  struct FolderNode
+  {
+    std::string name;
+    std::string path;
+    std::string thumbnailPath;
+    std::string thumbnailCacheName;
+    std::vector<uint8_t> thumbnailData;
+    int directFileCount = 0;
+    int fileCount = 0;
+    bool expanded = false;
+    IBitmap thumbnail;
+    std::vector<FolderNode> children;
+  };
+
+  struct Row
+  {
+    RowType type = RowType::Empty;
+    LibraryKind kind = LibraryKind::NAM;
+    FolderNode* node = nullptr;
+    std::string label;
+    IRECT rect;
+    IRECT expanderRect;
+    IRECT thumbnailRect;
+    IRECT labelRect;
+    bool expandable = false;
+    bool expanded = false;
+    bool loadable = false;
+  };
+
+  static constexpr float kSectionHeight = 24.f;
+  static constexpr float kEmptyRowHeight = 22.f;
+  static constexpr float kFolderRowHeight = 28.f;
+  static constexpr float kAmpCardGap = 8.f;
+  static constexpr float kAmpCardPad = 8.f;
+  static constexpr float kAmpCardTitleHeight = 32.f;
+  static constexpr float kAmpCardTitleXPad = 4.f;
+  static constexpr float kAmpCardTitleYPad = 5.f;
+  static constexpr float kIndent = 12.f;
+  static constexpr float kTextPad = 12.f;
+  static constexpr float kRightTextPad = 6.f;
+  static constexpr float kHeaderTextPad = 48.f;
+  static constexpr float kArrowWidth = 12.f;
+  static constexpr float kArrowGap = 5.f;
+
+  static std::string ToLower(std::string s)
+  {
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return s;
+  }
+
+  static bool HasExtension(const std::filesystem::path& path, const char* extension)
+  {
+    return ToLower(path.extension().string()) == std::string(".") + extension;
+  }
+
+  static bool IsImageFile(const std::filesystem::path& path)
+  {
+    const std::string ext = ToLower(path.extension().string());
+    return ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp";
+  }
+
+  static bool CanLoadThumbnailFile(const std::filesystem::path& path)
+  {
+    const std::string ext = ToLower(path.extension().string());
+    return ext == ".jpg" || ext == ".jpeg" || ext == ".png";
+  }
+
+  static bool IsWebPFile(const std::filesystem::path& path)
+  {
+    return ToLower(path.extension().string()) == ".webp";
+  }
+
+#ifdef OS_MAC
+  static bool EncodeImageAsPNG(const std::filesystem::path& path, std::vector<uint8_t>& data)
+  {
+    data.clear();
+
+    const std::string pathString = path.string();
+    CFURLRef url = CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault,
+                                                           reinterpret_cast<const UInt8*>(pathString.c_str()),
+                                                           static_cast<CFIndex>(pathString.size()),
+                                                           false);
+    if (url == nullptr)
+      return false;
+
+    CGImageSourceRef source = CGImageSourceCreateWithURL(url, nullptr);
+    CFRelease(url);
+
+    if (source == nullptr)
+      return false;
+
+    CGImageRef image = CGImageSourceCreateImageAtIndex(source, 0, nullptr);
+    CFRelease(source);
+
+    if (image == nullptr)
+      return false;
+
+    CFMutableDataRef pngData = CFDataCreateMutable(kCFAllocatorDefault, 0);
+    if (pngData == nullptr)
+    {
+      CGImageRelease(image);
+      return false;
+    }
+
+    CGImageDestinationRef destination = CGImageDestinationCreateWithData(pngData, CFSTR("public.png"), 1, nullptr);
+    if (destination == nullptr)
+    {
+      CFRelease(pngData);
+      CGImageRelease(image);
+      return false;
+    }
+
+    CGImageDestinationAddImage(destination, image, nullptr);
+    const bool ok = CGImageDestinationFinalize(destination);
+    CFRelease(destination);
+    CGImageRelease(image);
+
+    if (ok)
+    {
+      const CFIndex size = CFDataGetLength(pngData);
+      if (size > 0 && size <= std::numeric_limits<int>::max())
+      {
+        const UInt8* bytes = CFDataGetBytePtr(pngData);
+        data.assign(bytes, bytes + size);
+      }
+    }
+
+    CFRelease(pngData);
+    return !data.empty();
+  }
+#endif
+
+  static IRECT GetAspectFitRect(const IBitmap& bitmap, const IRECT& bounds)
+  {
+    const float bitmapWidth = static_cast<float>(bitmap.W());
+    const float bitmapHeight = static_cast<float>(bitmap.H());
+
+    if (bitmapWidth <= 0.f || bitmapHeight <= 0.f || bounds.W() <= 0.f || bounds.H() <= 0.f)
+      return bounds;
+
+    const float scale = std::min(bounds.W() / bitmapWidth, bounds.H() / bitmapHeight);
+    return bounds.GetCentredInside(bitmapWidth * scale, bitmapHeight * scale);
+  }
+
+  static std::string PathString(const std::filesystem::path& path)
+  {
+    return path.lexically_normal().string();
+  }
+
+  static std::string NormalizePath(const char* path)
+  {
+    if (!CStringHasContents(path))
+      return "";
+
+    try
+    {
+      return PathString(std::filesystem::u8path(path));
+    }
+    catch (...)
+    {
+      return path;
+    }
+  }
+
+  static std::string ParentDirectory(const char* path)
+  {
+    if (!CStringHasContents(path))
+      return "";
+
+    try
+    {
+      return PathString(std::filesystem::u8path(path).parent_path());
+    }
+    catch (...)
+    {
+      WDL_String directory(path);
+      directory.remove_filepart(true);
+      return NormalizePath(directory.Get());
+    }
+  }
+
+  static std::string FileName(const std::filesystem::path& path)
+  {
+    const std::string name = path.filename().string();
+    return name.empty() ? path.string() : name;
+  }
+
+  static bool DirectoryExists(const std::string& path)
+  {
+    if (path.empty())
+      return false;
+
+    std::error_code ec;
+    return std::filesystem::is_directory(std::filesystem::u8path(path), ec);
+  }
+
+  static int CountDirectFilesWithExtension(const std::filesystem::path& directory, const char* extension, bool& readError)
+  {
+    int count = 0;
+    std::error_code ec;
+    std::filesystem::directory_iterator it(directory, std::filesystem::directory_options::skip_permission_denied, ec);
+    if (ec)
+    {
+      readError = true;
+      return 0;
+    }
+
+    for (std::filesystem::directory_iterator end; it != end; it.increment(ec))
+    {
+      if (ec)
+      {
+        readError = true;
+        break;
+      }
+
+      std::error_code entryError;
+      if (it->is_regular_file(entryError) && HasExtension(it->path(), extension))
+        count++;
+    }
+
+    return count;
+  }
+
+  static bool FindFirstImage(const std::filesystem::path& directory, std::filesystem::path& result)
+  {
+    std::vector<std::filesystem::directory_entry> entries;
+    std::error_code ec;
+
+    for (std::filesystem::directory_iterator it(directory, std::filesystem::directory_options::skip_permission_denied,
+                                                ec),
+         end;
+         !ec && it != end; it.increment(ec))
+    {
+      entries.push_back(*it);
+    }
+
+    std::sort(entries.begin(), entries.end(), [](const auto& a, const auto& b) {
+      return ToLower(a.path().filename().string()) < ToLower(b.path().filename().string());
+    });
+
+    for (const auto& entry : entries)
+    {
+      std::error_code entryError;
+      if (entry.is_regular_file(entryError) && IsImageFile(entry.path()))
+      {
+        result = entry.path();
+        return true;
+      }
+    }
+
+    for (const auto& entry : entries)
+    {
+      std::error_code entryError;
+      if (entry.is_symlink(entryError))
+        continue;
+
+      entryError.clear();
+      if (entry.is_directory(entryError) && FindFirstImage(entry.path(), result))
+        return true;
+    }
+
+    return false;
+  }
+
+  static bool BuildNAMNode(const std::filesystem::path& directory, FolderNode& node, bool& readError)
+  {
+    const int fileCount = CountDirectFilesWithExtension(directory, "nam", readError);
+    if (fileCount <= 0)
+      return false;
+
+    node.name = FileName(directory);
+    node.path = PathString(directory);
+    node.directFileCount = fileCount;
+    node.fileCount = fileCount;
+
+    std::filesystem::path thumbnailPath;
+    if (FindFirstImage(directory, thumbnailPath))
+      node.thumbnailPath = PathString(thumbnailPath);
+
+    return true;
+  }
+
+  static std::string EllipsizeToFit(IGraphics& g, const IText& textStyle, const std::string& text, float maxWidth)
+  {
+    if (text.empty() || maxWidth <= 0.f)
+      return "";
+
+    IRECT measured;
+    g.MeasureText(textStyle, text.c_str(), measured);
+    if (measured.W() <= maxWidth)
+      return text;
+
+    const std::string suffix = "...";
+    g.MeasureText(textStyle, suffix.c_str(), measured);
+    if (measured.W() > maxWidth)
+      return "";
+
+    size_t low = 0;
+    size_t high = text.size();
+    while (low < high)
+    {
+      const size_t mid = (low + high + 1) / 2;
+      const std::string candidate = text.substr(0, mid) + suffix;
+      g.MeasureText(textStyle, candidate.c_str(), measured);
+
+      if (measured.W() <= maxWidth)
+        low = mid;
+      else
+        high = mid - 1;
+    }
+
+    return text.substr(0, low) + suffix;
+  }
+
+  static bool TextFits(IGraphics& g, const IText& textStyle, const std::string& text, float maxWidth)
+  {
+    IRECT measured;
+    g.MeasureText(textStyle, text.c_str(), measured);
+    return measured.W() <= maxWidth;
+  }
+
+  static std::vector<std::string> SplitWordToFit(IGraphics& g, const IText& textStyle, const std::string& word,
+                                                 float maxWidth)
+  {
+    std::vector<std::string> chunks;
+    size_t start = 0;
+
+    while (start < word.size())
+    {
+      size_t low = 1;
+      size_t high = word.size() - start;
+      size_t best = 1;
+
+      while (low <= high)
+      {
+        const size_t mid = (low + high) / 2;
+        const std::string candidate = word.substr(start, mid);
+
+        if (TextFits(g, textStyle, candidate, maxWidth))
+        {
+          best = mid;
+          low = mid + 1;
+        }
+        else
+        {
+          if (mid == 0)
+            break;
+          high = mid - 1;
+        }
+      }
+
+      chunks.push_back(word.substr(start, best));
+      start += best;
+    }
+
+    return chunks;
+  }
+
+  static std::vector<std::string> WrapTextToFit(IGraphics& g, const IText& textStyle, const std::string& text,
+                                                float maxWidth)
+  {
+    std::vector<std::string> lines;
+    if (text.empty() || maxWidth <= 0.f)
+      return lines;
+
+    std::string current;
+    std::istringstream stream(text);
+    std::string word;
+    bool foundWord = false;
+
+    const auto placeWord = [&](const std::string& nextWord) {
+      if (current.empty())
+      {
+        if (TextFits(g, textStyle, nextWord, maxWidth))
+        {
+          current = nextWord;
+          return;
+        }
+
+        const auto chunks = SplitWordToFit(g, textStyle, nextWord, maxWidth);
+        for (size_t i = 0; i < chunks.size(); ++i)
+        {
+          if (i + 1 == chunks.size())
+            current = chunks[i];
+          else
+            lines.push_back(chunks[i]);
+        }
+        return;
+      }
+
+      const std::string candidate = current + " " + nextWord;
+      if (TextFits(g, textStyle, candidate, maxWidth))
+      {
+        current = candidate;
+        return;
+      }
+
+      lines.push_back(current);
+      current.clear();
+
+      if (TextFits(g, textStyle, nextWord, maxWidth))
+      {
+        current = nextWord;
+        return;
+      }
+
+      const auto chunks = SplitWordToFit(g, textStyle, nextWord, maxWidth);
+      for (size_t i = 0; i < chunks.size(); ++i)
+      {
+        if (i + 1 == chunks.size())
+          current = chunks[i];
+        else
+          lines.push_back(chunks[i]);
+      }
+    };
+
+    while (stream >> word)
+    {
+      foundWord = true;
+      placeWord(word);
+    }
+
+    if (!current.empty())
+      lines.push_back(current);
+
+    if (!foundWord)
+      lines.push_back(text);
+
+    return lines;
+  }
+
+  static float GetWrappedTextHeight(IGraphics& g, const IText& textStyle, const std::string& text, float maxWidth)
+  {
+    const auto lines = WrapTextToFit(g, textStyle, text, maxWidth);
+    const float lineHeight = textStyle.mSize + 2.f;
+    return std::max(kAmpCardTitleHeight, 2.f * kAmpCardTitleYPad + static_cast<float>(lines.size()) * lineHeight);
+  }
+
+  static void DrawWrappedText(IGraphics& g, const IText& textStyle, const std::string& text, const IRECT& bounds)
+  {
+    const auto lines = WrapTextToFit(g, textStyle, text, bounds.W());
+    if (lines.empty())
+      return;
+
+    const float lineHeight = textStyle.mSize + 2.f;
+    const float totalHeight = static_cast<float>(lines.size()) * lineHeight;
+    float y = bounds.T + std::max(0.f, (bounds.H() - totalHeight) * 0.5f);
+    const IText lineText = textStyle.WithVAlign(EVAlign::Middle);
+
+    for (const auto& line : lines)
+    {
+      const IRECT lineRect(bounds.L, y, bounds.R, y + lineHeight);
+      g.DrawText(lineText, line.c_str(), lineRect);
+      y += lineHeight;
+    }
+  }
+
+  IRECT GetLibraryArea(LibraryKind kind) const
+  {
+    const float halfHeight = std::floor(mRECT.H() * 0.5f);
+    if (kind == LibraryKind::NAM)
+      return IRECT(mRECT.L, mRECT.T, mRECT.R, mRECT.T + halfHeight);
+
+    return IRECT(mRECT.L, mRECT.T + halfHeight, mRECT.R, mRECT.B);
+  }
+
+  IRECT GetListArea(LibraryKind kind) const
+  {
+    return GetLibraryArea(kind).GetReducedFromTop(kSectionHeight).GetPadded(-1.f);
+  }
+
+  bool GetKindAtPoint(float x, float y, LibraryKind& kind) const
+  {
+    if (GetLibraryArea(LibraryKind::NAM).Contains(x, y))
+    {
+      kind = LibraryKind::NAM;
+      return true;
+    }
+
+    if (GetLibraryArea(LibraryKind::IR).Contains(x, y))
+    {
+      kind = LibraryKind::IR;
+      return true;
+    }
+
+    return false;
+  }
+
+  float& ScrollForKind(LibraryKind kind)
+  {
+    return kind == LibraryKind::NAM ? mNAMScroll : mIRScroll;
+  }
+
+  float ContentHeightForKind(LibraryKind kind) const
+  {
+    return kind == LibraryKind::NAM ? mNAMContentHeight : mIRContentHeight;
+  }
+
+  void DrawRow(IGraphics& g, const Row& row, const IRECT& visible, const IText& rowText, const IText& mutedText)
+  {
+    if (!row.rect.Intersects(visible))
+      return;
+
+    switch (row.type)
+    {
+      case RowType::Empty:
+      {
+        const std::string label = EllipsizeToFit(g, mutedText, row.label, row.labelRect.W());
+        g.DrawText(mutedText, label.c_str(), row.labelRect);
+      }
+        break;
+      case RowType::Folder:
+      {
+        const bool selected = IsSelected(row);
+        const auto bg = selected ? PluginColors::NAM_THEMECOLOR.WithOpacity(0.32f)
+                                 : (row.rect.Contains(mMouseX, mMouseY) ? PluginColors::MOUSEOVER
+                                                                        : COLOR_TRANSPARENT);
+
+        if (bg.A > 0)
+          g.FillRoundRect(bg, row.rect.GetHPadded(3.f), 4.f);
+
+        const IText text = row.loadable ? rowText : rowText.WithFGColor(PluginColors::NAM_THEMEFONTCOLOR.WithOpacity(0.76f));
+        const std::string label = EllipsizeToFit(g, text, row.label, row.labelRect.W());
+        g.DrawText(text, label.c_str(), row.labelRect);
+
+        if (row.expandable)
+          g.DrawText(mutedText, row.expanded ? "v" : ">", row.expanderRect);
+      }
+      break;
+      default: break;
+    }
+  }
+
+	  IBitmap GetNodeThumbnail(FolderNode& node)
+	  {
+	    if (node.thumbnail.IsValid() || node.thumbnailPath.empty())
+	      return node.thumbnail;
+
+	    std::error_code ec;
+	    const auto path = std::filesystem::u8path(node.thumbnailPath);
+	    if (std::filesystem::is_regular_file(path, ec))
+	    {
+#ifdef OS_MAC
+	      if (IsImageFile(path) && EncodeImageAsPNG(path, node.thumbnailData))
+	      {
+	        node.thumbnailCacheName = node.thumbnailPath + ".decoded.png";
+	        node.thumbnail = GetUI()->LoadBitmap(node.thumbnailCacheName.c_str(), node.thumbnailData.data(),
+	                                             static_cast<int>(node.thumbnailData.size()), 1, false, 1);
+	      }
+#else
+	      if (CanLoadThumbnailFile(path))
+	        node.thumbnail = GetUI()->LoadBitmap(node.thumbnailPath.c_str());
+#endif
+	    }
+
+	    if (node.thumbnail.IsValid() && (node.thumbnail.W() <= 0 || node.thumbnail.H() <= 0))
+	      node.thumbnail = IBitmap();
+
+	    return node.thumbnail;
+	  }
+
+  void DrawAmpCard(IGraphics& g, Row& row, const IRECT& visible, const IText& titleText)
+  {
+    if (!row.rect.Intersects(visible) || row.node == nullptr)
+      return;
+
+    const IColor borderColor(255, 214, 214, 214);
+    const IColor placeholderColor(255, 246, 246, 246);
+    const bool selected = IsSelected(row);
+    const bool hovered = row.rect.Contains(mMouseX, mMouseY);
+    const auto fillColor = selected ? PluginColors::NAM_THEMECOLOR.WithOpacity(0.18f)
+                                    : (hovered ? IColor(255, 248, 248, 248) : COLOR_WHITE);
+
+    g.FillRoundRect(fillColor, row.rect, 4.f);
+    g.DrawRoundRect(selected ? PluginColors::NAM_THEMECOLOR.WithOpacity(0.75f) : borderColor, row.rect, 4.f, &mBlend,
+                    1.f);
+    g.FillRect(placeholderColor, row.thumbnailRect);
+
+    const IBitmap thumbnail = GetNodeThumbnail(*row.node);
+    if (thumbnail.IsValid())
+      g.DrawFittedBitmap(thumbnail, GetAspectFitRect(thumbnail, row.thumbnailRect.GetPadded(-4.f)), &mBlend);
+
+    DrawWrappedText(g, titleText, row.label, row.labelRect);
+  }
+
+  void DrawLibrary(IGraphics& g, LibraryKind kind, const std::string& rootDirectory, std::vector<FolderNode>& nodes,
+                   bool readError, float& scroll, float& contentHeight, const IText& rowText, const IText& mutedText,
+                   const IText& cardTitleText)
+  {
+    const IRECT listArea = GetListArea(kind);
+
+    ClampScroll(scroll, contentHeight, listArea);
+    const size_t startRow = mRows.size();
+    float y = listArea.T - scroll;
+    AddRowsForLibrary(g, kind, rootDirectory, nodes, readError, listArea, y, cardTitleText);
+    contentHeight = std::max(0.f, y - listArea.T + scroll);
+    ClampScroll(scroll, contentHeight, listArea);
+
+    g.PathClipRegion(listArea);
+    for (size_t i = startRow; i < mRows.size(); ++i)
+    {
+      if (mRows[i].kind == LibraryKind::NAM && mRows[i].type == RowType::Folder)
+        DrawAmpCard(g, mRows[i], listArea, cardTitleText);
+      else
+        DrawRow(g, mRows[i], listArea, rowText, mutedText);
+    }
+    g.PathClipRegion(IRECT());
+  }
+
+  void DrawSectionTitle(IGraphics& g, LibraryKind kind, const char* title, const IText& sectionText)
+  {
+    const IRECT area = GetLibraryArea(kind);
+    const IRECT headerArea(area.L + 2.f, area.T + 2.f, area.R - 2.f, area.T + kSectionHeight);
+    const IRECT labelArea(headerArea.L + kHeaderTextPad, headerArea.T, headerArea.R - kTextPad, headerArea.B - 1.f);
+
+    g.PathClipRegion(IRECT());
+    g.FillRect(COLOR_WHITE, headerArea);
+    g.DrawText(sectionText, title, labelArea);
+    const auto line = IRECT(labelArea.L, headerArea.B - 1.f, headerArea.R - kTextPad, headerArea.B);
+    g.FillRect(PluginColors::NAM_THEMECOLOR.WithOpacity(0.35f), line);
+  }
+
+  bool BuildNode(const std::filesystem::path& directory, LibraryKind kind, FolderNode& node, int depth, bool& readError)
+  {
+    const char* extension = kind == LibraryKind::NAM ? "nam" : "wav";
+    std::vector<std::filesystem::directory_entry> entries;
+    std::error_code ec;
+
+    std::filesystem::directory_iterator it(directory, std::filesystem::directory_options::skip_permission_denied, ec);
+    if (ec)
+    {
+      readError = true;
+      return false;
+    }
+
+    for (std::filesystem::directory_iterator end; it != end; it.increment(ec))
+    {
+      if (ec)
+      {
+        readError = true;
+        break;
+      }
+
+      entries.push_back(*it);
+    }
+
+    std::sort(entries.begin(), entries.end(), [](const auto& a, const auto& b) {
+      return ToLower(a.path().filename().string()) < ToLower(b.path().filename().string());
+    });
+
+    node.name = FileName(directory);
+    node.path = PathString(directory);
+    node.expanded = depth == 0;
+
+    for (const auto& entry : entries)
+    {
+      std::error_code entryError;
+      if (entry.is_symlink(entryError))
+        continue;
+
+      entryError.clear();
+      if (entry.is_directory(entryError))
+      {
+        FolderNode child;
+        if (BuildNode(entry.path(), kind, child, depth + 1, readError))
+        {
+          node.fileCount += child.fileCount;
+          node.children.push_back(std::move(child));
+        }
+      }
+      else if (entry.is_regular_file(entryError))
+      {
+        if (HasExtension(entry.path(), extension))
+        {
+          node.directFileCount++;
+          node.fileCount++;
+        }
+      }
+    }
+
+    return node.fileCount > 0;
+  }
+
+  std::vector<FolderNode> BuildLibrary(const std::string& rootDirectory, LibraryKind kind, bool& readError)
+  {
+    std::vector<FolderNode> nodes;
+
+    if (!DirectoryExists(rootDirectory))
+    {
+      readError = true;
+      return nodes;
+    }
+
+    if (kind == LibraryKind::NAM)
+    {
+      FolderNode rootNode;
+      if (BuildNAMNode(std::filesystem::u8path(rootDirectory), rootNode, readError))
+        nodes.push_back(std::move(rootNode));
+
+      std::vector<std::filesystem::directory_entry> entries;
+      std::error_code ec;
+      for (std::filesystem::directory_iterator it(std::filesystem::u8path(rootDirectory),
+                                                  std::filesystem::directory_options::skip_permission_denied,
+                                                  ec),
+           end;
+           !ec && it != end; it.increment(ec))
+      {
+        entries.push_back(*it);
+      }
+
+      if (ec)
+        readError = true;
+
+      std::sort(entries.begin(), entries.end(), [](const auto& a, const auto& b) {
+        return ToLower(a.path().filename().string()) < ToLower(b.path().filename().string());
+      });
+
+      for (const auto& entry : entries)
+      {
+        std::error_code entryError;
+        if (entry.is_symlink(entryError))
+          continue;
+
+        entryError.clear();
+        if (!entry.is_directory(entryError))
+          continue;
+
+        FolderNode child;
+        if (BuildNAMNode(entry.path(), child, readError))
+          nodes.push_back(std::move(child));
+      }
+
+      return nodes;
+    }
+
+    FolderNode root;
+    if (!BuildNode(std::filesystem::u8path(rootDirectory), kind, root, 0, readError))
+      return nodes;
+
+    nodes = std::move(root.children);
+
+    if (root.fileCount > 0)
+    {
+      int childFileCount = 0;
+      for (const auto& child : nodes)
+        childFileCount += child.fileCount;
+
+      if (root.fileCount > childFileCount)
+      {
+        root.children.clear();
+        root.fileCount -= childFileCount;
+        root.name = FileName(std::filesystem::u8path(rootDirectory));
+        root.expanded = false;
+        nodes.insert(nodes.begin(), std::move(root));
+      }
+    }
+
+    return nodes;
+  }
+
+  void Rescan()
+  {
+    mNAMReadError = false;
+    mIRReadError = false;
+    mNAMFolders = BuildLibrary(mNAMRootDirectory, LibraryKind::NAM, mNAMReadError);
+    mIRFolders = BuildLibrary(mIRRootDirectory, LibraryKind::IR, mIRReadError);
+    mNAMScroll = 0.f;
+    mIRScroll = 0.f;
+  }
+
+  void AddRowsForLibrary(IGraphics& g, LibraryKind kind, const std::string& rootDirectory,
+                         std::vector<FolderNode>& nodes, bool readError, const IRECT& listArea, float& y,
+                         const IText& cardTitleText)
+  {
+    if (rootDirectory.empty())
+    {
+      AddEmptyRow("Choose a folder in Settings", kind, listArea, y);
+      return;
+    }
+
+    if (nodes.empty())
+    {
+      AddEmptyRow(readError ? "Re-select folder in Settings" : "No matching folders", kind, listArea, y);
+      return;
+    }
+
+    if (kind == LibraryKind::NAM)
+      AddAmpCardRows(g, kind, nodes, listArea, y, cardTitleText);
+    else
+    {
+      for (auto& node : nodes)
+        AddFolderRows(kind, node, 0, listArea, y);
+    }
+  }
+
+  void AddEmptyRow(const char* text, LibraryKind kind, const IRECT& listArea, float& y)
+  {
+    Row row;
+    row.type = RowType::Empty;
+    row.kind = kind;
+    row.label = text;
+    row.rect = IRECT(listArea.L, y, listArea.R, y + kEmptyRowHeight);
+    row.labelRect = IRECT(row.rect.L + kTextPad, row.rect.T, row.rect.R - kRightTextPad, row.rect.B);
+    mRows.push_back(row);
+    y += kEmptyRowHeight;
+  }
+
+  void AddAmpCardRows(IGraphics& g, LibraryKind kind, std::vector<FolderNode>& nodes, const IRECT& listArea, float& y,
+                      const IText& titleText)
+  {
+    if (nodes.empty())
+      return;
+
+    const float availableWidth = listArea.W() - (2.f * kAmpCardPad) - kAmpCardGap;
+    const float cardWidth = std::floor(availableWidth * 0.5f);
+    const float labelWidth = cardWidth - 2.f * kAmpCardTitleXPad;
+    const float startX = listArea.L + kAmpCardPad;
+    const float startY = y + kAmpCardPad;
+    std::vector<float> cardHeights;
+    cardHeights.reserve(nodes.size());
+
+    for (const auto& node : nodes)
+      cardHeights.push_back(cardWidth + GetWrappedTextHeight(g, titleText, node.name, labelWidth));
+
+    float rowY = startY;
+    for (size_t rowStart = 0; rowStart < nodes.size(); rowStart += 2)
+    {
+      float rowHeight = cardHeights[rowStart];
+      if (rowStart + 1 < nodes.size())
+        rowHeight = std::max(rowHeight, cardHeights[rowStart + 1]);
+
+      for (size_t column = 0; column < 2 && rowStart + column < nodes.size(); ++column)
+      {
+        const size_t nodeIndex = rowStart + column;
+        const float x = startX + static_cast<float>(column) * (cardWidth + kAmpCardGap);
+
+        Row row;
+        row.type = RowType::Folder;
+        row.kind = kind;
+        row.node = &nodes[nodeIndex];
+        row.label = nodes[nodeIndex].name;
+        row.loadable = nodes[nodeIndex].directFileCount > 0;
+        row.rect = IRECT(x, rowY, x + cardWidth, rowY + rowHeight);
+        row.thumbnailRect = IRECT(row.rect.L, row.rect.T, row.rect.R, row.rect.T + cardWidth);
+        row.labelRect = IRECT(row.rect.L + kAmpCardTitleXPad, row.thumbnailRect.B + kAmpCardTitleYPad,
+                              row.rect.R - kAmpCardTitleXPad, row.rect.B - kAmpCardTitleYPad);
+        mRows.push_back(row);
+      }
+
+      rowY += rowHeight + kAmpCardGap;
+    }
+
+    y = rowY - kAmpCardGap + kAmpCardPad;
+  }
+
+  void AddFolderRows(LibraryKind kind, FolderNode& node, int depth, const IRECT& listArea, float& y)
+  {
+    Row row;
+    row.type = RowType::Folder;
+    row.kind = kind;
+    row.node = &node;
+    row.expandable = !node.children.empty();
+    row.expanded = node.expanded;
+    row.loadable = node.directFileCount > 0 && !row.expandable;
+    row.rect = IRECT(listArea.L, y, listArea.R, y + kFolderRowHeight);
+
+    const float labelLeft = listArea.L + kTextPad + depth * kIndent;
+    const float maxRight = listArea.R - kRightTextPad;
+    if (row.expandable)
+    {
+      row.expanderRect = IRECT(maxRight - kArrowWidth, row.rect.T, maxRight, row.rect.B);
+      row.labelRect = IRECT(labelLeft, row.rect.T, row.expanderRect.L - kArrowGap, row.rect.B);
+    }
+    else
+    {
+      row.labelRect = IRECT(labelLeft, row.rect.T, maxRight, row.rect.B);
+    }
+
+    row.label = node.name;
+    mRows.push_back(row);
+    y += kFolderRowHeight;
+
+    if (node.expanded)
+    {
+      for (auto& child : node.children)
+        AddFolderRows(kind, child, depth + 1, listArea, y);
+    }
+  }
+
+  bool IsSelected(const Row& row) const
+  {
+    if (row.node == nullptr || !row.loadable)
+      return false;
+
+    return row.kind == LibraryKind::NAM ? row.node->path == mSelectedNAMDirectory
+                                        : row.node->path == mSelectedIRDirectory;
+  }
+
+  void ClampScroll(float& scroll, float contentHeight, const IRECT& listArea)
+  {
+    const float maxScroll = std::max(0.f, contentHeight - listArea.H());
+    scroll = std::clamp(scroll, 0.f, maxScroll);
+  }
+
+  void CloseDrawer()
+  {
+    Hide(true);
+
+    if (auto* ui = GetUI())
+      ui->SetAllControlsDirty();
+  }
+
+  LoadDirectoryFunc mLoadNAMDirectory;
+  LoadDirectoryFunc mLoadIRDirectory;
+  std::string mNAMRootDirectory;
+  std::string mIRRootDirectory;
+  std::string mSelectedNAMDirectory;
+  std::string mSelectedIRDirectory;
+  std::vector<FolderNode> mNAMFolders;
+  std::vector<FolderNode> mIRFolders;
+  std::vector<Row> mRows;
+  bool mNAMReadError = false;
+  bool mIRReadError = false;
+  float mNAMScroll = 0.f;
+  float mIRScroll = 0.f;
+  float mNAMContentHeight = 0.f;
+  float mIRContentHeight = 0.f;
+  float mMouseX = -1.f;
+  float mMouseY = -1.f;
 };
 
 class NAMMeterControl : public IVPeakAvgMeterControl<>, public IBitmapBase
@@ -679,15 +2152,87 @@ public:
   };
 };
 
+class NAMDirectoryPickerControl : public IControl
+{
+public:
+  using DirectoryChangedFunc = std::function<void(const WDL_String&)>;
+
+  NAMDirectoryPickerControl(const IRECT& bounds, const char* title, const char* emptyText, const WDL_String& directory,
+                            DirectoryChangedFunc onDirectoryChanged)
+  : IControl(bounds)
+  , mTitle(title)
+  , mEmptyText(emptyText)
+  , mDirectory(directory)
+  , mOnDirectoryChanged(std::move(onDirectoryChanged))
+  {
+  }
+
+  void SetDirectory(const char* directory)
+  {
+    mDirectory.Set(directory);
+    SetDirty(false);
+  }
+
+  void Draw(IGraphics& g) override
+  {
+    const auto bg = mMouseIsOver ? PluginColors::MOUSEOVER : COLOR_WHITE;
+    g.FillRoundRect(bg, mRECT, 5.f);
+    g.DrawRoundRect(PluginColors::NAM_THEMECOLOR.WithOpacity(0.22f), mRECT, 5.f, &mBlend, 1.f);
+
+    const IText titleText(11.f, PluginColors::NAM_THEMEFONTCOLOR.WithOpacity(0.78f), "Roboto-Regular", EAlign::Near);
+    const IText valueText(12.f, PluginColors::NAM_THEMEFONTCOLOR, "Roboto-Regular", EAlign::Near);
+
+    const auto titleRect = mRECT.GetPadded(-8.f).GetFromTop(16.f);
+    const auto valueRect = mRECT.GetPadded(-8.f).GetReducedFromTop(16.f);
+    g.DrawText(titleText, mTitle.Get(), titleRect);
+
+    std::string label = CStringHasContents(mDirectory.Get()) ? std::string(mDirectory.Get()) : std::string(mEmptyText.Get());
+    label = EllipsizePath(label, 58);
+    g.DrawText(valueText, label.c_str(), valueRect);
+  }
+
+  void OnMouseDown(float x, float y, const IMouseMod& mod) override
+  {
+    WDL_String directory(mDirectory);
+    GetUI()->PromptForDirectory(directory, [this](const WDL_String& fileName, const WDL_String& path) {
+      if (!path.GetLength())
+        return;
+
+      mDirectory.Set(path.Get());
+      if (mOnDirectoryChanged)
+        mOnDirectoryChanged(mDirectory);
+      SetDirty(false);
+    });
+  }
+
+private:
+  static std::string EllipsizePath(const std::string& path, size_t maxLength)
+  {
+    if (path.size() <= maxLength)
+      return path;
+
+    if (maxLength < 8)
+      return path.substr(0, maxLength);
+
+    const size_t head = (maxLength - 3) / 2;
+    const size_t tail = maxLength - 3 - head;
+    return path.substr(0, head) + "..." + path.substr(path.size() - tail);
+  }
+
+  WDL_String mTitle;
+  WDL_String mEmptyText;
+  WDL_String mDirectory;
+  DirectoryChangedFunc mOnDirectoryChanged;
+};
+
 class NAMSettingsPageControl : public IContainerBaseWithNamedChildren
 {
 public:
-  NAMSettingsPageControl(const IRECT& bounds, const IBitmap& bitmap, const IBitmap& inputLevelBackgroundBitmap,
+  NAMSettingsPageControl(const IRECT& bounds, const IBitmap& inputLevelBackgroundBitmap,
                          const IBitmap& switchBitmap, ISVG closeSVG, const IVStyle& style,
                          const IVStyle& radioButtonStyle)
   : IContainerBaseWithNamedChildren(bounds)
   , mAnimationTime(0)
-  , mBitmap(bitmap)
   , mInputLevelBackgroundBitmap(inputLevelBackgroundBitmap)
   , mSwitchBitmap(switchBitmap)
   , mStyle(style)
@@ -753,7 +2298,7 @@ public:
   void OnAttached() override
   {
     const float pad = 20.0f;
-    const IVStyle titleStyle = DEFAULT_STYLE.WithValueText(IText(30, COLOR_WHITE, "Michroma-Regular"))
+    const IVStyle titleStyle = DEFAULT_STYLE.WithValueText(IText(30, COLOR_BLACK, "Michroma-Regular"))
                                  .WithDrawFrame(false)
                                  .WithShadowOffset(2.f);
     const auto text = IText(DEFAULT_TEXT_SIZE, EAlign::Center, PluginColors::HELP_TEXT);
@@ -761,15 +2306,31 @@ public:
     const auto style = mStyle.WithDrawFrame(false).WithValueText(text);
     const IVStyle leftStyle = style.WithValueText(leftText);
 
-    AddNamedChildControl(new IBitmapControl(GetRECT(), mBitmap), mControlNames.bitmap)->SetIgnoreMouse(true);
-    const auto titleArea = GetRECT().GetPadded(-(pad + 10.0f)).GetFromTop(50.0f);
+    AddNamedChildControl(new IPanelControl(GetRECT(), COLOR_WHITE), mControlNames.background)->SetIgnoreMouse(true);
+    const auto workingArea = GetRECT().GetPadded(-(pad + 10.0f));
+    const auto titleArea = workingArea.GetFromTop(50.0f);
     AddNamedChildControl(new IVLabelControl(titleArea, "SETTINGS", titleStyle), mControlNames.title);
+
+    const auto libraryArea = workingArea.GetReducedFromTop(58.f).GetFromTop(58.f);
+    const auto namLibraryArea = libraryArea.GetFromLeft(0.5f * libraryArea.W()).GetReducedFromRight(6.f);
+    const auto irLibraryArea = libraryArea.GetFromRight(0.5f * libraryArea.W()).GetReducedFromLeft(6.f);
+
+    AddNamedChildControl(new NAMDirectoryPickerControl(
+                           namLibraryArea, "NAM library folder", "Click to choose your amps folder",
+                           PLUG()->GetNAMRootDirectory(),
+                           [this](const WDL_String& directory) { PLUG()->SetNAMRootDirectory(directory); }),
+                         mControlNames.namLibraryDirectory);
+    AddNamedChildControl(new NAMDirectoryPickerControl(
+                           irLibraryArea, "IR library folder", "Click to choose your cabs folder",
+                           PLUG()->GetIRRootDirectory(),
+                           [this](const WDL_String& directory) { PLUG()->SetIRRootDirectory(directory); }),
+                         mControlNames.irLibraryDirectory);
 
     // Attach input/output calibration controls
     {
       const float height = NAM_KNOB_HEIGHT + NAM_SWTICH_HEIGHT + 10.0f;
-      const float width = titleArea.W();
-      const auto inputOutputArea = titleArea.GetFromBottom(height).GetTranslated(0.0f, height);
+      const float width = workingArea.W();
+      const auto inputOutputArea = workingArea.GetReducedFromTop(128.f).GetFromTop(height);
       const auto inputArea = inputOutputArea.GetFromLeft(0.5f * width);
       const auto outputArea = inputOutputArea.GetFromRight(0.5f * width);
 
@@ -800,7 +2361,7 @@ public:
         "are about the same loudness.\nCalibrated=Match the input's digital-analog calibration.");
     }
 
-    const float halfWidth = PLUG_WIDTH / 2.0f - pad;
+    const float halfWidth = GetRECT().W() / 2.0f - pad;
     const auto bottomArea = GetRECT().GetPadded(-pad).GetFromBottom(78.0f);
     const float lineHeight = 15.0f;
     const auto modelInfoArea = bottomArea.GetFromLeft(halfWidth).GetFromTop(4 * lineHeight);
@@ -824,8 +2385,15 @@ public:
     modelInfoControl->SetModelInfo(modelInfo);
   };
 
+  void SetLibraryDirectories(const char* namRootDirectory, const char* irRootDirectory)
+  {
+    if (auto* p = dynamic_cast<NAMDirectoryPickerControl*>(GetNamedChild(mControlNames.namLibraryDirectory)))
+      p->SetDirectory(namRootDirectory);
+    if (auto* p = dynamic_cast<NAMDirectoryPickerControl*>(GetNamedChild(mControlNames.irLibraryDirectory)))
+      p->SetDirectory(irRootDirectory);
+  }
+
 private:
-  IBitmap mBitmap;
   IBitmap mInputLevelBackgroundBitmap;
   IBitmap mSwitchBitmap;
   IVStyle mStyle;
@@ -839,11 +2407,13 @@ private:
   struct ControlNames
   {
     const std::string about = "About";
-    const std::string bitmap = "Bitmap";
+    const std::string background = "Background";
     const std::string calibrateInput = "CalibrateInput";
     const std::string close = "Close";
     const std::string inputCalibrationLevel = "InputCalibrationLevel";
+    const std::string irLibraryDirectory = "IRLibraryDirectory";
     const std::string modelInfo = "ModelInfo";
+    const std::string namLibraryDirectory = "NAMLibraryDirectory";
     const std::string outputMode = "OutputMode";
     const std::string title = "Title";
   } mControlNames;
@@ -909,15 +2479,15 @@ private:
 
       buildInfoStr.SetFormatted(100, "Version %s %s %s", verStr.Get(), PLUG()->GetArchStr(), PLUG()->GetAPIStr());
 
-      AddChildControl(new IURLControl(GetRECT().SubRectVertical(5, 0), "NEURAL AMP MODELER",
-                                      "https://www.neuralampmodeler.com", mText, COLOR_TRANSPARENT,
+      AddChildControl(new IURLControl(GetRECT().SubRectVertical(5, 0), "Pedal Division NAM",
+                                      "https://pedaldivision.com", mText, COLOR_TRANSPARENT,
                                       PluginColors::HELP_TEXT_MO, PluginColors::HELP_TEXT_CLICKED));
-      AddChildControl(new IVLabelControl(GetRECT().SubRectVertical(5, 1), "By Steven Atkinson", mStyle));
+      AddChildControl(new IVLabelControl(GetRECT().SubRectVertical(5, 1), "By Pedal Division", mStyle));
       AddChildControl(new IVLabelControl(GetRECT().SubRectVertical(5, 2), buildInfoStr.Get(), mStyle));
       AddChildControl(new IURLControl(GetRECT().SubRectVertical(5, 3),
                                       "Plug-in development: Steve Atkinson, Oli Larkin, ... ",
-                                      "https://github.com/sdatkinson/NeuralAmpModelerPlugin/graphs/contributors", mText,
-                                      COLOR_TRANSPARENT, PluginColors::HELP_TEXT_MO, PluginColors::HELP_TEXT_CLICKED));
+                                      "https://pedaldivision.com", mText, COLOR_TRANSPARENT, PluginColors::HELP_TEXT_MO,
+                                      PluginColors::HELP_TEXT_CLICKED));
       AddChildControl(new ThirdPartyNoticesControl(GetRECT().SubRectVertical(5, 4), mText));
     };
 

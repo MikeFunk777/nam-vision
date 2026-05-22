@@ -65,6 +65,9 @@ enum ECtrlTags
   kCtrlTagSlimmableIcon,
   kCtrlTagSlimOverlayBackdrop,
   kCtrlTagSlimKnob,
+  kCtrlTagLibrarySidebar,
+  kCtrlTagLibraryDrawerButton,
+  kCtrlTagModelThumbnail,
   kNumCtrlTags
 };
 
@@ -212,6 +215,11 @@ public:
   void OnParamChangeUI(int paramIdx, iplug::EParamSource source) override;
   bool OnMessage(int msgTag, int ctrlTag, int dataSize, const void* pData) override;
 
+  const WDL_String& GetNAMRootDirectory() const { return mNAMRootDirectory; }
+  const WDL_String& GetIRRootDirectory() const { return mIRRootDirectory; }
+  void SetNAMRootDirectory(const WDL_String& directory);
+  void SetIRRootDirectory(const WDL_String& directory);
+
 private:
   // Allocates mInputPointers and mOutputPointers
   void _AllocateIOPointers(const size_t nChans);
@@ -267,6 +275,10 @@ private:
   // Update all controls that depend on a model
   void _UpdateControlsFromModel();
 
+  void _RefreshLibrarySidebar();
+  void _LoadLibrarySettings();
+  void _SaveLibrarySettings() const;
+
   // Make sure that the latency is reported correctly.
   void _UpdateLatency();
 
@@ -318,6 +330,13 @@ private:
   WDL_String mNAMPath;
   // Path to IR (.wav file)
   WDL_String mIRPath;
+  // User-selected library roots for sidebar navigation.
+  WDL_String mNAMRootDirectory;
+  WDL_String mIRRootDirectory;
+#ifdef OS_MAC
+  WDL_String mNAMRootDirectoryBookmark;
+  WDL_String mIRRootDirectoryBookmark;
+#endif
 
   WDL_String mHighLightColor{PluginColors::NAM_THEMECOLOR.ToColorCode()};
 
