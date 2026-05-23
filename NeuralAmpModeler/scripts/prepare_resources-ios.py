@@ -42,6 +42,14 @@ def main():
                     print("copying " + font + " to " + dst)
                     shutil.copy(projectpath + "/resources/fonts/" + font, dst)
 
+            pd_src = projectpath + "/resources/pd/"
+            pd_dst = os.path.join(dst, "pd")
+            if os.path.exists(pd_src):
+                if os.path.exists(pd_dst):
+                    shutil.rmtree(pd_dst)
+                print("copying pd assets to " + pd_dst)
+                shutil.copytree(pd_src, pd_dst)
+
 
 if __name__ == "__main__":
     main()

@@ -28,7 +28,7 @@
 #define PLUG_DOES_STATE_CHUNKS 0
 #define PLUG_HAS_UI 1
 #define PLUG_WIDTH 820
-#define PLUG_HEIGHT 560
+#define PLUG_HEIGHT 562
 #define PLUG_FPS 60
 #define PLUG_SHARED_RESOURCES 0
 #define PLUG_HOST_RESIZE 0
@@ -69,6 +69,17 @@
 #define IR_ICON_OFF_FN "IRIconOff.svg"
 #define GLOBE_ICON_FN "Globe.svg"
 #define SLIMMABLE_ICON_FN "SlimmableIcon.svg"
+
+#define PD_LOGO_FN "pd/logo.svg"
+#define PD_ICON_SETTINGS_FN "pd/icon-settings.svg"
+#define PD_ICON_ARROW_LEFT_FN "pd/icon-arrow-left.svg"
+#define PD_ICON_POWER_FN "pd/icon-power.svg"
+#define PD_EXAMPLE_AMP_FN "pd/example-amp.jpg"
+#define PD_EXAMPLE_CAB_FN "pd/example-cab.jpg"
+#define PD_CHEVRON_LEFT_FN "pd/chevron-left.svg"
+#define PD_CHEVRON_RIGHT_FN "pd/chevron-right.svg"
+#define PD_FONT_MEDIUM_FN "pd/medium.ttf"
+#define PD_FONT_BOLD_FN "pd/bold.ttf"
 
 #define BACKGROUND_FN "Background.jpg"
 #define BACKGROUND2X_FN "Background@2x.jpg"

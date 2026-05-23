@@ -79,6 +79,23 @@ public:
   }
 };
 
+class NAMHeaderIconButtonControl : public ISVGButtonControl
+{
+public:
+  NAMHeaderIconButtonControl(const IRECT& bounds, IActionFunction af, const ISVG& svg)
+  : ISVGButtonControl(bounds, af, svg, svg)
+  {
+  }
+
+  void Draw(IGraphics& g) override
+  {
+    if (mMouseIsOver)
+      g.FillRect(PluginColors::MOUSEOVER, mRECT);
+
+    ISVGButtonControl::Draw(g);
+  }
+};
+
 /// Full-window dim layer; click dismisses (used for Slim overlay).
 class NAMSlimOverlayBackdropControl : public IControl
 {

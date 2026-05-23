@@ -51,6 +51,14 @@ def main():
             print("copying " + font + " to " + dst)
             shutil.copy(projectpath + "/resources/fonts/" + font, dst)
 
+    pd_src = projectpath + "/resources/pd/"
+    pd_dst = os.path.join(dst, "pd")
+    if os.path.exists(pd_src):
+        if os.path.exists(pd_dst):
+            shutil.rmtree(pd_dst)
+        print("copying pd assets to " + pd_dst)
+        shutil.copytree(pd_src, pd_dst)
+
     third_party_notices = projectpath + "/installer/ThirdPartyNotices.txt"
     if os.path.exists(third_party_notices):
         print("copying ThirdPartyNotices.txt to " + dst)
