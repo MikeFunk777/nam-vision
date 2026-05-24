@@ -1,8 +1,10 @@
 #include <algorithm> // std::clamp, std::min
+#include <chrono>
 #include <cmath> // pow
 #include <fstream>
 #include <filesystem>
 #include <iostream>
+#include <sstream>
 #include <utility>
 
 #include "Colors.h"
@@ -90,6 +92,9 @@ constexpr float kMainHeaderPadding = 10.f;
 constexpr float kMainHeaderLogoWidth = 80.f;
 constexpr float kMainHeaderLogoHeight = 20.f;
 constexpr float kMainHeaderSlotSize = 20.f;
+constexpr float kHeaderLoadingBarHeight = 6.f;
+constexpr float kHeaderLoadingBarFillTimeMs = 1200.f;
+constexpr float kHeaderLoadingBarFrameTimeMs = 33.f;
 constexpr float kMainAreaTop = 42.f;
 constexpr float kMainAreaHeight = 357.f;
 constexpr float kInputMeterWidth = 64.f;
@@ -147,18 +152,115 @@ constexpr float kSettingsPathSetterHeight = (2.f * kSettingsPathSetterPadding) +
 constexpr float kSettingsPathContainerTop = kMainHeaderHeight;
 constexpr float kSettingsPathContainerHeight = (2.f * kSettingsPathContainerPaddingY) + kSettingsPathSetterHeight +
                                                kMainHeaderBorderSize;
+constexpr int kAmpSelectorColumns = 4;
+constexpr float kAmpSelectorContentTop = kMainHeaderHeight + kMainHeaderBorderSize;
+constexpr float kAmpSelectorCardWidth = 205.f;
+constexpr float kAmpSelectorCardPadding = 12.f;
+constexpr float kAmpSelectorImageSize = 181.f;
+constexpr float kAmpSelectorTitleMinHeight = 18.f;
+constexpr float kAmpSelectorTitlePaddingY = 3.f;
+constexpr float kAmpSelectorCardHeight = (2.f * kAmpSelectorCardPadding) + kAmpSelectorImageSize;
+constexpr float kAmpSelectorWheelStep = 24.f;
+constexpr float kSubfolderPromptCardWidth = 320.f;
+constexpr float kSubfolderPromptCardPadding = 32.f;
+constexpr float kSubfolderPromptCardRadius = 5.f;
+constexpr float kSubfolderPromptTextHeight = 92.f;
+constexpr float kSubfolderPromptTextButtonGap = 16.f;
+constexpr float kSubfolderPromptButtonGap = 10.f;
+constexpr float kSubfolderPromptSelectButtonWidth = 136.f;
+constexpr float kSubfolderPromptLoadAllButtonWidth = 86.f;
+constexpr float kSubfolderPromptCardHeight = (2.f * kSubfolderPromptCardPadding) + kSubfolderPromptTextHeight +
+                                             kSubfolderPromptTextButtonGap + kSettingsButtonHeight;
 
 const IColor kPDLightGrey(255, 240, 240, 240);
 const IColor kPDForeground(255, 35, 31, 32);
 const IColor kPDBackground(255, 255, 255, 255);
 
+class PDHeaderLoadingBarControl : public IControl
+{
+public:
+  PDHeaderLoadingBarControl(const IRECT& bounds)
+  : IControl(bounds)
+  {
+    SetIgnoreMouse(true);
+  }
+
+  void Draw(IGraphics& g) override
+  {
+    if (!mLoading)
+      return;
+
+    const float fillWidth = mRECT.W() * mProgress;
+    if (fillWidth <= 0.f)
+      return;
+
+    g.FillRect(kPDForeground, IRECT(mRECT.L, mRECT.T, mRECT.L + fillWidth, mRECT.B));
+  }
+
+  void SetLoading(bool loading)
+  {
+    if (loading && !mLoading)
+    {
+      mStartedAt = std::chrono::steady_clock::now();
+      mLastPaintAt = mStartedAt;
+      mProgress = 0.02f;
+      mLastPaintWidth = -1.f;
+    }
+
+    if (!loading)
+    {
+      mProgress = 0.f;
+      mLastPaintWidth = -1.f;
+    }
+
+    if (loading != mLoading)
+    {
+      mLoading = loading;
+      SetDirty(false);
+    }
+  }
+
+  void Tick()
+  {
+    if (!mLoading)
+      return;
+
+    const auto now = std::chrono::steady_clock::now();
+    const auto frameElapsed = std::chrono::duration<float, std::milli>(now - mLastPaintAt).count();
+    if (frameElapsed < kHeaderLoadingBarFrameTimeMs)
+      return;
+
+    const auto elapsed = std::chrono::duration<float, std::milli>(now - mStartedAt).count();
+    const float progress = std::min(0.95f, elapsed / kHeaderLoadingBarFillTimeMs);
+    const float paintWidth = std::floor(mRECT.W() * progress);
+
+    if (paintWidth != mLastPaintWidth)
+    {
+      mProgress = progress;
+      mLastPaintWidth = paintWidth;
+      mLastPaintAt = now;
+      SetDirty(false);
+    }
+  }
+
+private:
+  bool mLoading = false;
+  float mProgress = 0.f;
+  float mLastPaintWidth = -1.f;
+  std::chrono::steady_clock::time_point mStartedAt = std::chrono::steady_clock::now();
+  std::chrono::steady_clock::time_point mLastPaintAt = std::chrono::steady_clock::now();
+};
+
 class MainAreaControl : public IControl
 {
 public:
-  MainAreaControl(const IRECT& bounds, const IBitmap& ampImage, const IBitmap& cabImage)
+  MainAreaControl(const IRECT& bounds, const IBitmap& ampImage, const IBitmap& cabImage, const IBitmap& noAmpImage,
+                  const IBitmap& noCabImage)
   : IControl(bounds)
   , mAmpImage(ampImage)
   , mCabImage(cabImage)
+  , mNoAmpImage(noAmpImage)
+  , mNoCabImage(noCabImage)
   {
   }
 
@@ -168,17 +270,82 @@ public:
 
     IRECT section = mRECT.GetFromLeft(kInputMeterWidth);
     section = IRECT(section.R, mRECT.T, section.R + kAmpImageWidth, mRECT.B);
-    DrawWidthFittedClippedBitmap(g, mAmpImage, section);
+    DrawWidthFittedClippedBitmap(g, mAmpImage, section, section.Contains(mMouseX, mMouseY) ? 0.8f : 1.f);
 
     section = IRECT(section.R, mRECT.T, section.R + kMainAreaSpacerWidth, mRECT.B);
     section = IRECT(section.R, mRECT.T, section.R + kCabImageWidth, mRECT.B);
-    DrawWidthFittedClippedBitmap(g, mCabImage, section);
+    DrawWidthFittedClippedBitmap(g, mCabImage, section, section.Contains(mMouseX, mMouseY) ? 0.8f : 1.f);
     section = IRECT(section.R, mRECT.T, section.R + kOutputMeterWidth, mRECT.B);
     g.FillRect(kPDBackground, section);
   }
 
+  void OnMouseDown(float x, float y, const IMouseMod& mod) override
+  {
+    if (auto* ui = GetUI())
+    {
+      if (GetAmpImageBounds().Contains(x, y))
+      {
+        if (auto* ampSelector = ui->GetControlWithTag(kCtrlTagAmpSelectorScreen))
+          ampSelector->Hide(false);
+      }
+      else if (GetCabImageBounds().Contains(x, y))
+      {
+        if (auto* cabSelector = ui->GetControlWithTag(kCtrlTagCabSelectorScreen))
+          cabSelector->Hide(false);
+      }
+      else if (auto* ampSelector = ui->GetControlWithTag(kCtrlTagAmpSelectorScreen))
+      {
+        ampSelector->Hide(false);
+      }
+
+      ui->SetAllControlsDirty();
+    }
+  }
+
+  void OnMsgFromDelegate(int msgTag, int dataSize, const void* pData) override
+  {
+    if (pData == nullptr)
+      return;
+
+    switch (msgTag)
+    {
+      case kMsgTagLoadedModel: SetSelectedImage(reinterpret_cast<const char*>(pData), SelectionKind::Amp); break;
+      case kMsgTagLoadedIR: SetSelectedImage(reinterpret_cast<const char*>(pData), SelectionKind::Cab); break;
+      default: break;
+    }
+  }
+
+  void OnMouseOver(float x, float y, const IMouseMod& mod) override
+  {
+    IControl::OnMouseOver(x, y, mod);
+  }
+
+  void OnMouseOut() override
+  {
+    IControl::OnMouseOut();
+  }
+
 private:
-  static void DrawWidthFittedClippedBitmap(IGraphics& g, const IBitmap& bitmap, const IRECT& bounds)
+  enum class SelectionKind
+  {
+    Amp,
+    Cab
+  };
+
+  IRECT GetAmpImageBounds() const
+  {
+    const auto input = mRECT.GetFromLeft(kInputMeterWidth);
+    return IRECT(input.R, mRECT.T, input.R + kAmpImageWidth, mRECT.B);
+  }
+
+  IRECT GetCabImageBounds() const
+  {
+    const auto amp = GetAmpImageBounds();
+    const auto spacer = IRECT(amp.R, mRECT.T, amp.R + kMainAreaSpacerWidth, mRECT.B);
+    return IRECT(spacer.R, mRECT.T, spacer.R + kCabImageWidth, mRECT.B);
+  }
+
+  static void DrawWidthFittedClippedBitmap(IGraphics& g, const IBitmap& bitmap, const IRECT& bounds, float opacity)
   {
     if (!bitmap.IsValid() || bitmap.W() <= 0 || bitmap.H() <= 0)
       return;
@@ -187,14 +354,266 @@ private:
     const float drawWidth = bitmap.W() * scale;
     const float drawHeight = bitmap.H() * scale;
     const auto imageBounds = bounds.GetCentredInside(drawWidth, drawHeight);
+    const IBlend blend(EBlend::Default, opacity);
 
     g.PathClipRegion(bounds);
-    g.DrawFittedBitmap(bitmap, imageBounds);
+    g.DrawFittedBitmap(bitmap, imageBounds, &blend);
     g.PathClipRegion(IRECT());
+  }
+
+  void SetSelectedImage(const char* filePath, SelectionKind kind)
+  {
+    const IBitmap fallback = kind == SelectionKind::Amp ? mNoAmpImage : mNoCabImage;
+    IBitmap selected = fallback;
+
+    try
+    {
+      const auto path = std::filesystem::u8path(filePath);
+      const auto directory = GetArtworkSearchDirectory(path, kind);
+      std::filesystem::path imagePath;
+      if (FindFirstImage(directory, imagePath))
+        selected = LoadImage(imagePath, fallback);
+    }
+    catch (...)
+    {
+      selected = fallback;
+    }
+
+    ReleasePreviousDisplayedImage(kind, selected);
+
+    if (kind == SelectionKind::Amp)
+      mAmpImage = selected;
+    else
+      mCabImage = selected;
+
+    SetDirty(false);
+  }
+
+  std::filesystem::path GetArtworkSearchDirectory(const std::filesystem::path& selectedFile, SelectionKind kind)
+  {
+    if (kind == SelectionKind::Cab)
+    {
+      const WDL_String& irRoot = PLUG()->GetIRRootDirectory();
+      if (irRoot.GetLength())
+      {
+        const auto root = std::filesystem::u8path(irRoot.Get());
+        std::vector<std::filesystem::directory_entry> entries;
+        std::error_code ec;
+
+        for (std::filesystem::directory_iterator it(root, std::filesystem::directory_options::skip_permission_denied,
+                                                    ec),
+             end;
+             !ec && it != end; it.increment(ec))
+        {
+          entries.push_back(*it);
+        }
+
+        std::sort(entries.begin(), entries.end(), [](const auto& a, const auto& b) {
+          return ToLower(a.path().filename().string()) < ToLower(b.path().filename().string());
+        });
+
+        for (const auto& entry : entries)
+        {
+          std::error_code entryError;
+          if (entry.is_directory(entryError) && PathContains(entry.path(), selectedFile))
+            return entry.path();
+        }
+      }
+    }
+
+    return selectedFile.parent_path();
+  }
+
+  static bool PathContains(const std::filesystem::path& parent, const std::filesystem::path& child)
+  {
+    std::error_code ec;
+    const auto relative = std::filesystem::relative(child, parent, ec);
+    if (ec || relative.empty())
+      return false;
+
+    for (const auto& part : relative)
+    {
+      if (part == "..")
+        return false;
+    }
+
+    return true;
+  }
+
+  IBitmap LoadImage(const std::filesystem::path& path, const IBitmap& fallback)
+  {
+    IBitmap bitmap;
+
+    std::error_code ec;
+    if (!std::filesystem::is_regular_file(path, ec))
+      return fallback;
+
+#ifdef OS_MAC
+    std::vector<uint8_t> data;
+    if (EncodeImageAsPNG(path, data))
+    {
+      const std::string cacheName = PathString(path) + ".main.decoded.png";
+      bitmap = GetUI()->LoadBitmap(cacheName.c_str(), data.data(), static_cast<int>(data.size()), 1, false, 1);
+    }
+#else
+    if (CanLoadThumbnailFile(path))
+      bitmap = GetUI()->LoadBitmap(PathString(path).c_str());
+#endif
+
+    if (bitmap.IsValid() && bitmap.W() > 0 && bitmap.H() > 0)
+      return bitmap;
+
+    return fallback;
+  }
+
+  void ReleasePreviousDisplayedImage(SelectionKind kind, const IBitmap& replacement)
+  {
+    const IBitmap& fallback = kind == SelectionKind::Amp ? mNoAmpImage : mNoCabImage;
+    const IBitmap& current = kind == SelectionKind::Amp ? mAmpImage : mCabImage;
+    if (!current.IsValid() || current.GetAPIBitmap() == fallback.GetAPIBitmap()
+        || current.GetAPIBitmap() == replacement.GetAPIBitmap())
+      return;
+
+    if (auto* ui = GetUI())
+      ui->ReleaseBitmap(current);
+  }
+
+  static bool FindFirstImage(const std::filesystem::path& directory, std::filesystem::path& result)
+  {
+    std::vector<std::filesystem::directory_entry> entries;
+    std::error_code ec;
+
+    for (std::filesystem::directory_iterator it(directory, std::filesystem::directory_options::skip_permission_denied,
+                                                ec),
+         end;
+         !ec && it != end; it.increment(ec))
+    {
+      entries.push_back(*it);
+    }
+
+    std::sort(entries.begin(), entries.end(), [](const auto& a, const auto& b) {
+      return ToLower(a.path().filename().string()) < ToLower(b.path().filename().string());
+    });
+
+    for (const auto& entry : entries)
+    {
+      std::error_code entryError;
+      if (entry.is_regular_file(entryError) && IsImageFile(entry.path()))
+      {
+        result = entry.path();
+        return true;
+      }
+    }
+
+    for (const auto& entry : entries)
+    {
+      std::error_code entryError;
+      if (entry.is_symlink(entryError))
+        continue;
+
+      entryError.clear();
+      if (entry.is_directory(entryError) && FindFirstImage(entry.path(), result))
+        return true;
+    }
+
+    return false;
+  }
+
+  static std::string ToLower(std::string s)
+  {
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return s;
+  }
+
+  static bool IsImageFile(const std::filesystem::path& path)
+  {
+    const std::string ext = ToLower(path.extension().string());
+    return ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp";
+  }
+
+  static bool CanLoadThumbnailFile(const std::filesystem::path& path)
+  {
+    const std::string ext = ToLower(path.extension().string());
+    return ext == ".jpg" || ext == ".jpeg" || ext == ".png";
+  }
+
+#ifdef OS_MAC
+  static bool EncodeImageAsPNG(const std::filesystem::path& path, std::vector<uint8_t>& data)
+  {
+    data.clear();
+
+    const std::string pathString = path.string();
+    CFURLRef url = CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault,
+                                                           reinterpret_cast<const UInt8*>(pathString.c_str()),
+                                                           static_cast<CFIndex>(pathString.size()),
+                                                           false);
+    if (url == nullptr)
+      return false;
+
+    CGImageSourceRef source = CGImageSourceCreateWithURL(url, nullptr);
+    CFRelease(url);
+
+    if (source == nullptr)
+      return false;
+
+    CGImageRef image = CGImageSourceCreateImageAtIndex(source, 0, nullptr);
+    CFRelease(source);
+
+    if (image == nullptr)
+      return false;
+
+    if (CGImageGetWidth(image) == 0 || CGImageGetHeight(image) == 0)
+    {
+      CGImageRelease(image);
+      return false;
+    }
+
+    CFMutableDataRef pngData = CFDataCreateMutable(kCFAllocatorDefault, 0);
+    if (pngData == nullptr)
+    {
+      CGImageRelease(image);
+      return false;
+    }
+
+    CGImageDestinationRef destination = CGImageDestinationCreateWithData(pngData, CFSTR("public.png"), 1, nullptr);
+    if (destination == nullptr)
+    {
+      CFRelease(pngData);
+      CGImageRelease(image);
+      return false;
+    }
+
+    CGImageDestinationAddImage(destination, image, nullptr);
+    const bool ok = CGImageDestinationFinalize(destination);
+    CFRelease(destination);
+    CGImageRelease(image);
+
+    if (ok)
+    {
+      const CFIndex size = CFDataGetLength(pngData);
+      if (size > 0 && size <= std::numeric_limits<int>::max())
+      {
+        const UInt8* bytes = CFDataGetBytePtr(pngData);
+        data.assign(bytes, bytes + size);
+      }
+    }
+
+    CFRelease(pngData);
+    return !data.empty();
+  }
+#endif
+
+  static std::string PathString(const std::filesystem::path& path)
+  {
+    return path.lexically_normal().string();
   }
 
   IBitmap mAmpImage;
   IBitmap mCabImage;
+  IBitmap mNoAmpImage;
+  IBitmap mNoCabImage;
+  float mMouseX = -1.f;
+  float mMouseY = -1.f;
 };
 
 class SelectorAreaControl : public IControl
@@ -213,11 +632,11 @@ public:
 
     IRECT section = mRECT.GetFromLeft(kInputMeterWidth);
     section = IRECT(section.R, mRECT.T, section.R + kAmpImageWidth, mRECT.B);
-    DrawSelector(g, section, "[AMP] Lynx50-CL Ch1-Hi Bogdo - STD");
+    DrawSelector(g, section, GetLabel(SelectorKind::Amp).c_str());
 
     section = IRECT(section.R, mRECT.T, section.R + kMainAreaSpacerWidth, mRECT.B);
     section = IRECT(section.R, mRECT.T, section.R + kCabImageWidth, mRECT.B);
-    DrawSelector(g, section, "YA MRSH 412 T75 Mix 14");
+    DrawSelector(g, section, GetLabel(SelectorKind::Cab).c_str());
     section = IRECT(section.R, mRECT.T, section.R + kOutputMeterWidth, mRECT.B);
     g.FillRect(kPDBackground, section);
 
@@ -225,7 +644,88 @@ public:
     g.FillRect(kPDLightGrey, borderBounds);
   }
 
+  void OnMsgFromDelegate(int msgTag, int dataSize, const void* pData) override
+  {
+    if (pData == nullptr)
+      return;
+
+    switch (msgTag)
+    {
+      case kMsgTagLoadedModel: SetSelectedFile(SelectorKind::Amp, reinterpret_cast<const char*>(pData)); break;
+      case kMsgTagLoadedIR: SetSelectedFile(SelectorKind::Cab, reinterpret_cast<const char*>(pData)); break;
+      default: break;
+    }
+  }
+
+  void OnMouseDown(float x, float y, const IMouseMod& mod) override
+  {
+    SelectorKind kind;
+    SelectorGeometry geometry;
+    if (!GetGeometryAtPoint(x, y, kind, geometry))
+      return;
+
+    if (geometry.leftArrow.Contains(x, y))
+    {
+      Cycle(kind, -1);
+      return;
+    }
+
+    if (geometry.rightArrow.Contains(x, y))
+    {
+      Cycle(kind, 1);
+      return;
+    }
+
+    if (geometry.label.Contains(x, y))
+    {
+      ShowMenu(kind, geometry.label);
+      return;
+    }
+  }
+
+  void OnPopupMenuSelection(IPopupMenu* pSelectedMenu, int valIdx) override
+  {
+    if (pSelectedMenu == nullptr)
+      return;
+
+    const auto* item = pSelectedMenu->GetChosenItem();
+    if (item == nullptr)
+      return;
+
+    SelectIndex(mPopupKind, item->GetTag());
+  }
+
 private:
+  enum class SelectorKind
+  {
+    Amp,
+    Cab
+  };
+
+  struct SelectorState
+  {
+    std::string extension;
+    std::string emptyLabel;
+    std::vector<std::string> files;
+    int selectedIndex = -1;
+    std::string selectedPath;
+    std::vector<std::string> pendingFiles;
+  };
+
+  struct SelectorGeometry
+  {
+    IRECT section;
+    IRECT leftArrow;
+    IRECT label;
+    IRECT rightArrow;
+  };
+
+public:
+  void SetPendingAmpFiles(std::vector<std::string> files) { SetPendingFiles(SelectorKind::Amp, std::move(files)); }
+  void SetPendingCabFiles(std::vector<std::string> files) { SetPendingFiles(SelectorKind::Cab, std::move(files)); }
+
+private:
+
   static std::string EllipsizeToFit(IGraphics& g, const IText& textStyle, const std::string& text, float maxWidth)
   {
     if (text.empty() || maxWidth <= 0.f)
@@ -261,8 +761,9 @@ private:
   void DrawSelector(IGraphics& g, const IRECT& bounds, const char* label)
   {
     const IText selectorText(kSelectorTextSize, kPDForeground, kPDFontMedium, EAlign::Center, EVAlign::Middle);
+    const std::string actualLabel = label && label[0] != '\0' ? label : "Select...";
     const float maxTextWidth = std::max(0.f, bounds.W() - (2.f * kSelectorArrowSize) - (2.f * kSelectorGap));
-    const std::string displayLabel = EllipsizeToFit(g, selectorText, label, maxTextWidth);
+    const std::string displayLabel = EllipsizeToFit(g, selectorText, actualLabel, maxTextWidth);
 
     IRECT measured;
     g.MeasureText(selectorText, displayLabel.c_str(), measured);
@@ -286,8 +787,270 @@ private:
     g.DrawSVG(mRightArrow, rightArrowBounds, &mBlend);
   }
 
+  SelectorState& State(SelectorKind kind) { return kind == SelectorKind::Amp ? mAmpState : mCabState; }
+  const SelectorState& State(SelectorKind kind) const { return kind == SelectorKind::Amp ? mAmpState : mCabState; }
+
+  std::string GetLabel(SelectorKind kind) const
+  {
+    const auto& state = State(kind);
+    if (state.selectedIndex >= 0 && state.selectedIndex < static_cast<int>(state.files.size()))
+      return FileStem(std::filesystem::u8path(state.files[static_cast<size_t>(state.selectedIndex)]));
+
+    return state.emptyLabel;
+  }
+
+  bool GetGeometryAtPoint(float x, float y, SelectorKind& kind, SelectorGeometry& geometry)
+  {
+    const auto amp = GetAmpSectionBounds();
+    if (amp.Contains(x, y))
+    {
+      kind = SelectorKind::Amp;
+      geometry = GetSelectorGeometry(amp, GetLabel(kind));
+      return true;
+    }
+
+    const auto cab = GetCabSectionBounds();
+    if (cab.Contains(x, y))
+    {
+      kind = SelectorKind::Cab;
+      geometry = GetSelectorGeometry(cab, GetLabel(kind));
+      return true;
+    }
+
+    return false;
+  }
+
+  IRECT GetAmpSectionBounds() const
+  {
+    const auto input = mRECT.GetFromLeft(kInputMeterWidth);
+    return IRECT(input.R, mRECT.T, input.R + kAmpImageWidth, mRECT.B);
+  }
+
+  IRECT GetCabSectionBounds() const
+  {
+    const auto amp = GetAmpSectionBounds();
+    const auto spacer = IRECT(amp.R, mRECT.T, amp.R + kMainAreaSpacerWidth, mRECT.B);
+    return IRECT(spacer.R, mRECT.T, spacer.R + kCabImageWidth, mRECT.B);
+  }
+
+  SelectorGeometry GetSelectorGeometry(const IRECT& bounds, const std::string& label)
+  {
+    const IText selectorText(kSelectorTextSize, kPDForeground, kPDFontMedium, EAlign::Center, EVAlign::Middle);
+    const float maxTextWidth = std::max(0.f, bounds.W() - (2.f * kSelectorArrowSize) - (2.f * kSelectorGap));
+    const std::string displayLabel = EllipsizeToFit(*GetUI(), selectorText, label, maxTextWidth);
+
+    IRECT measured;
+    GetUI()->MeasureText(selectorText, displayLabel.c_str(), measured);
+    const float textWidth = std::min(measured.W(), maxTextWidth);
+    const float totalWidth = (2.f * kSelectorArrowSize) + (2.f * kSelectorGap) + textWidth;
+    float x = bounds.MW() - (totalWidth / 2.f);
+    const float rowHeight = std::max(kSelectorArrowSize, measured.H());
+    const float rowTop = bounds.T;
+    const float arrowTop = rowTop + ((rowHeight - kSelectorArrowSize) / 2.f);
+
+    SelectorGeometry geometry;
+    geometry.section = bounds;
+    geometry.leftArrow = IRECT(x, arrowTop, x + kSelectorArrowSize, arrowTop + kSelectorArrowSize);
+    x = geometry.leftArrow.R + kSelectorGap;
+    geometry.label = IRECT(x, rowTop, x + textWidth, rowTop + rowHeight);
+    x = geometry.label.R + kSelectorGap;
+    geometry.rightArrow = IRECT(x, arrowTop, x + kSelectorArrowSize, arrowTop + kSelectorArrowSize);
+    return geometry;
+  }
+
+  void SetSelectedFile(SelectorKind kind, const char* filePath)
+  {
+    auto& state = State(kind);
+    state.selectedPath = NormalizePath(filePath);
+    state.files.clear();
+    state.selectedIndex = -1;
+
+    try
+    {
+      const auto path = std::filesystem::u8path(state.selectedPath);
+      const auto directory = path.parent_path();
+      const auto normalized = PathString(path);
+
+      if (!state.pendingFiles.empty() && ContainsFile(state.pendingFiles, normalized))
+      {
+        state.files = std::move(state.pendingFiles);
+      }
+      else
+      {
+        state.pendingFiles.clear();
+        state.files = FindFiles(directory, state.extension);
+      }
+
+      for (size_t i = 0; i < state.files.size(); ++i)
+      {
+        if (state.files[i] == normalized)
+        {
+          state.selectedIndex = static_cast<int>(i);
+          break;
+        }
+      }
+    }
+    catch (...)
+    {
+      state.files.clear();
+      state.selectedIndex = -1;
+    }
+
+    SetDirty(false);
+  }
+
+  void SetPendingFiles(SelectorKind kind, std::vector<std::string> files)
+  {
+    NormalizeAndSortFiles(files);
+    State(kind).pendingFiles = std::move(files);
+  }
+
+  static void NormalizeAndSortFiles(std::vector<std::string>& files)
+  {
+    for (auto& file : files)
+      file = NormalizePath(file.c_str());
+
+    std::sort(files.begin(), files.end(), [](const auto& a, const auto& b) { return ToLower(a) < ToLower(b); });
+    files.erase(std::unique(files.begin(), files.end()), files.end());
+  }
+
+  static bool ContainsFile(const std::vector<std::string>& files, const std::string& file)
+  {
+    return std::find(files.begin(), files.end(), file) != files.end();
+  }
+
+  void Cycle(SelectorKind kind, int direction)
+  {
+    auto& state = State(kind);
+    if (state.files.empty())
+    {
+      OpenSelectorScreen(kind);
+      return;
+    }
+
+    const int nFiles = static_cast<int>(state.files.size());
+    state.selectedIndex = (state.selectedIndex + direction + nFiles) % nFiles;
+    LoadSelected(kind);
+  }
+
+  void ShowMenu(SelectorKind kind, const IRECT& menuBounds)
+  {
+    const auto& state = State(kind);
+    if (state.files.empty())
+    {
+      OpenSelectorScreen(kind);
+      return;
+    }
+
+    mPopupKind = kind;
+    mPopupMenu.Clear();
+    for (size_t i = 0; i < state.files.size(); ++i)
+      mPopupMenu.AddItem(new IPopupMenu::Item(FileStem(std::filesystem::u8path(state.files[i])).c_str(),
+                                              IPopupMenu::Item::kNoFlags, static_cast<int>(i)));
+    mPopupMenu.SetChosenItemIdx(state.selectedIndex);
+    GetUI()->CreatePopupMenu(*this, mPopupMenu, menuBounds);
+  }
+
+  void SelectIndex(SelectorKind kind, int index)
+  {
+    auto& state = State(kind);
+    if (index < 0 || index >= static_cast<int>(state.files.size()))
+      return;
+
+    state.selectedIndex = index;
+    LoadSelected(kind);
+  }
+
+  void LoadSelected(SelectorKind kind)
+  {
+    auto& state = State(kind);
+    if (state.selectedIndex < 0 || state.selectedIndex >= static_cast<int>(state.files.size()))
+      return;
+
+    WDL_String path(state.files[static_cast<size_t>(state.selectedIndex)].c_str());
+    if (kind == SelectorKind::Amp)
+      PLUG()->LoadNAMFile(path);
+    else
+      PLUG()->LoadIRFile(path);
+  }
+
+  void OpenSelectorScreen(SelectorKind kind)
+  {
+    if (auto* ui = GetUI())
+    {
+      if (auto* screen = ui->GetControlWithTag(kind == SelectorKind::Amp ? kCtrlTagAmpSelectorScreen
+                                                                         : kCtrlTagCabSelectorScreen))
+        screen->Hide(false);
+      ui->SetAllControlsDirty();
+    }
+  }
+
+  static std::vector<std::string> FindFiles(const std::filesystem::path& directory, const std::string& extension)
+  {
+    std::vector<std::string> files;
+    std::error_code ec;
+    for (std::filesystem::directory_iterator it(directory, std::filesystem::directory_options::skip_permission_denied, ec),
+         end;
+         !ec && it != end; it.increment(ec))
+    {
+      std::error_code entryError;
+      if (it->is_regular_file(entryError) && HasExtension(it->path(), extension))
+        files.push_back(PathString(it->path()));
+    }
+
+    std::sort(files.begin(), files.end(), [](const auto& a, const auto& b) { return ToLower(a) < ToLower(b); });
+    return files;
+  }
+
+  static std::string NormalizePath(const char* path)
+  {
+    if (!CStringHasContents(path))
+      return "";
+
+    try
+    {
+      return PathString(std::filesystem::u8path(path));
+    }
+    catch (...)
+    {
+      return path;
+    }
+  }
+
+  static std::string PathString(const std::filesystem::path& path)
+  {
+    return path.lexically_normal().string();
+  }
+
+  static std::string FileName(const std::filesystem::path& path)
+  {
+    const std::string name = path.filename().string();
+    return name.empty() ? path.string() : name;
+  }
+
+  static std::string FileStem(const std::filesystem::path& path)
+  {
+    const std::string stem = path.stem().string();
+    return stem.empty() ? FileName(path) : stem;
+  }
+
+  static std::string ToLower(std::string s)
+  {
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return s;
+  }
+
+  static bool HasExtension(const std::filesystem::path& path, const std::string& extension)
+  {
+    return ToLower(path.extension().string()) == "." + extension;
+  }
+
   ISVG mLeftArrow;
   ISVG mRightArrow;
+  SelectorState mAmpState {"nam", "Select amp...", {}, -1, "", {}};
+  SelectorState mCabState {"wav", "Select cab...", {}, -1, "", {}};
+  SelectorKind mPopupKind = SelectorKind::Amp;
+  IPopupMenu mPopupMenu {"Files"};
 };
 
 class PDMainKnobControl : public IKnobControlBase
@@ -625,6 +1388,1032 @@ private:
   ISVG mBackIcon;
 };
 
+class PDAmpSelectorScreenControl : public IControl
+{
+public:
+  enum class Target
+  {
+    Amp,
+    Cab
+  };
+
+  PDAmpSelectorScreenControl(const IRECT& bounds, const ISVG& backIcon, const IBitmap& fallbackImage,
+                             const char* title, const char* extension, Target target)
+  : IControl(bounds)
+  , mBackIcon(backIcon)
+  , mFallbackImage(fallbackImage)
+  , mTitle(title)
+  , mExtension(extension)
+  , mTarget(target)
+  {
+  }
+
+  void SetNAMRootDirectory(const char* namRootDirectory)
+  {
+    SetRootDirectory(namRootDirectory);
+  }
+
+  void SetRootDirectory(const char* rootDirectory)
+  {
+    const std::string root = NormalizePath(rootDirectory);
+    if (root == mRootDirectory)
+      return;
+
+    mRootDirectory = root;
+    Rescan();
+    SetDirty(false);
+  }
+
+  void Draw(IGraphics& g) override
+  {
+    const auto headerBounds = IRECT(mRECT.L, mRECT.T, mRECT.R, mRECT.T + kMainHeaderHeight);
+    const auto borderBounds =
+      IRECT(headerBounds.L, headerBounds.B - kMainHeaderBorderSize, headerBounds.R, headerBounds.B);
+    const auto leftSlot = GetBackButtonBounds();
+    const IText titleText(kSelectorTextSize, kPDForeground, kPDFontBold, EAlign::Center, EVAlign::Middle);
+
+    g.FillRect(kPDBackground, mRECT);
+    g.FillRect(kPDBackground, headerBounds);
+    g.FillRect(kPDLightGrey, borderBounds);
+    g.DrawSVG(mBackIcon, leftSlot, &mBlend);
+    g.DrawText(titleText, mTitle.c_str(), headerBounds, &mBlend);
+    DrawGrid(g);
+    DrawSubfolderPrompt(g);
+  }
+
+  void OnMouseDown(float x, float y, const IMouseMod& mod) override
+  {
+    if (mShowingSubfolderPrompt)
+    {
+      HandleSubfolderPromptMouseDown(x, y);
+      return;
+    }
+
+    if (GetBackButtonBounds().Contains(x, y))
+    {
+      CloseScreen();
+      return;
+    }
+
+    SelectFolderAtPoint(x, y);
+  }
+
+  void OnMouseWheel(float x, float y, const IMouseMod& mod, float d) override
+  {
+    if (mShowingSubfolderPrompt)
+      return;
+
+    const auto scrollArea = GetScrollArea();
+    if (!scrollArea.Contains(x, y))
+      return;
+
+    const float contentHeight = GetContentHeight();
+    if (contentHeight <= scrollArea.H())
+      return;
+
+    mScroll -= d * kAmpSelectorWheelStep;
+    ClampScroll();
+    SetDirty(false);
+  }
+
+  void OnMouseOver(float x, float y, const IMouseMod& mod) override
+  {
+    IControl::OnMouseOver(x, y, mod);
+  }
+
+  void OnMouseOut() override
+  {
+    IControl::OnMouseOut();
+  }
+
+private:
+  struct Folder
+  {
+    std::string name;
+    std::string path;
+    std::vector<std::string> directFiles;
+    std::vector<std::string> recursiveFiles;
+    bool hasDirectSubfolders = false;
+    std::string thumbnailPath;
+    IBitmap thumbnail;
+    std::vector<std::string> titleLines;
+    float titleLinesWidth = 0.f;
+  };
+
+  IRECT GetBackButtonBounds() const
+  {
+    return IRECT(mRECT.L + kMainHeaderPadding, mRECT.T + kMainHeaderPadding,
+                 mRECT.L + kMainHeaderPadding + kMainHeaderSlotSize,
+                 mRECT.T + kMainHeaderPadding + kMainHeaderSlotSize);
+  }
+
+  IRECT GetScrollArea() const { return IRECT(mRECT.L, mRECT.T + kAmpSelectorContentTop, mRECT.R, mRECT.B); }
+
+  float GetContentHeight() const
+  {
+    const int rows = (static_cast<int>(mFolders.size()) + kAmpSelectorColumns - 1) / kAmpSelectorColumns;
+    return rows * kAmpSelectorCardHeight;
+  }
+
+  void ClampScroll()
+  {
+    const float maxScroll = std::max(0.f, GetContentHeight() - GetScrollArea().H());
+    mScroll = std::clamp(mScroll, 0.f, maxScroll);
+  }
+
+  void DrawGrid(IGraphics& g)
+  {
+    const auto scrollArea = GetScrollArea();
+    const IText titleText(kSelectorTextSize, kPDForeground, kPDFontMedium, EAlign::Center, EVAlign::Middle);
+
+    ClampScroll();
+    g.PathClipRegion(scrollArea);
+
+    if (mRootDirectory.empty())
+    {
+      g.PathClipRegion(IRECT());
+      return;
+    }
+
+    for (int i = 0; i < static_cast<int>(mFolders.size()); ++i)
+    {
+      const int column = i % kAmpSelectorColumns;
+      const int row = i / kAmpSelectorColumns;
+      auto& folder = mFolders[static_cast<size_t>(i)];
+      const float cardLeft = scrollArea.L + (column * kAmpSelectorCardWidth);
+      const float cardTop = scrollArea.T + (row * kAmpSelectorCardHeight) - mScroll;
+      const auto cardBounds =
+        IRECT(cardLeft, cardTop, cardLeft + kAmpSelectorCardWidth, cardTop + kAmpSelectorCardHeight);
+
+      if (cardBounds.B < scrollArea.T || cardBounds.T > scrollArea.B)
+        continue;
+
+      const auto imageBounds =
+        IRECT(cardBounds.L + kAmpSelectorCardPadding, cardBounds.T + kAmpSelectorCardPadding,
+              cardBounds.L + kAmpSelectorCardPadding + kAmpSelectorImageSize,
+              cardBounds.T + kAmpSelectorCardPadding + kAmpSelectorImageSize);
+      DrawCardBorder(g, cardBounds);
+      DrawContainedBitmap(g, folder.thumbnail.IsValid() ? folder.thumbnail : mFallbackImage, imageBounds, 1.f);
+      DrawBottomTitleOverlay(g, titleText, folder, cardBounds);
+    }
+
+    g.PathClipRegion(IRECT());
+  }
+
+  void DrawCardBorder(IGraphics& g, const IRECT& bounds)
+  {
+    g.FillRect(kPDLightGrey, IRECT(bounds.R - 2.f, bounds.T, bounds.R, bounds.B));
+    g.FillRect(kPDLightGrey, IRECT(bounds.L, bounds.B - 2.f, bounds.R, bounds.B));
+  }
+
+  static void DrawContainedBitmap(IGraphics& g, const IBitmap& bitmap, const IRECT& bounds, float opacity)
+  {
+    if (!bitmap.IsValid() || bitmap.W() <= 0 || bitmap.H() <= 0)
+      return;
+
+    const float scale = std::min(bounds.W() / static_cast<float>(bitmap.W()), bounds.H() / static_cast<float>(bitmap.H()));
+    const float drawWidth = bitmap.W() * scale;
+    const float drawHeight = bitmap.H() * scale;
+    const auto imageBounds = bounds.GetCentredInside(drawWidth, drawHeight);
+    const IBlend blend(EBlend::Default, opacity);
+
+    g.DrawFittedBitmap(bitmap, imageBounds, &blend);
+  }
+
+  void DrawBottomTitleOverlay(IGraphics& g, const IText& textStyle, Folder& folder, const IRECT& cardBounds)
+  {
+    const auto textBounds = IRECT(cardBounds.L + kAmpSelectorCardPadding, cardBounds.T + kAmpSelectorCardPadding,
+                                  cardBounds.R - kAmpSelectorCardPadding, cardBounds.B);
+    const auto& lines = GetTitleLines(g, textStyle, folder, textBounds.W());
+    if (lines.empty())
+      return;
+
+    const float lineHeight = textStyle.mSize + 2.f;
+    const float totalTextHeight = static_cast<float>(lines.size()) * lineHeight;
+    const float overlayHeight = std::max(kAmpSelectorTitleMinHeight, totalTextHeight + (2.f * kAmpSelectorTitlePaddingY));
+    const auto overlayBounds = IRECT(textBounds.L, cardBounds.B - overlayHeight, textBounds.R, cardBounds.B);
+    const IText lineText = textStyle.WithVAlign(EVAlign::Middle).WithAlign(EAlign::Center);
+
+    g.FillRect(kPDBackground, overlayBounds);
+
+    float y = overlayBounds.B - kAmpSelectorTitlePaddingY - totalTextHeight;
+    for (const auto& line : lines)
+    {
+      const IRECT lineBounds(overlayBounds.L, y, overlayBounds.R, y + lineHeight);
+      g.DrawText(lineText, line.c_str(), lineBounds, &mBlend);
+      y += lineHeight;
+    }
+  }
+
+  const std::vector<std::string>& GetTitleLines(IGraphics& g, const IText& textStyle, Folder& folder, float maxWidth)
+  {
+    if (folder.titleLines.empty() || std::abs(folder.titleLinesWidth - maxWidth) > 0.5f)
+    {
+      folder.titleLines = WrapTextToFit(g, textStyle, folder.name, maxWidth);
+      folder.titleLinesWidth = maxWidth;
+    }
+
+    return folder.titleLines;
+  }
+
+  static std::vector<std::string> WrapTextToFit(IGraphics& g, const IText& textStyle, const std::string& text,
+                                                float maxWidth)
+  {
+    std::vector<std::string> lines;
+    std::istringstream stream(text);
+    std::string word;
+    std::string currentLine;
+
+    while (stream >> word)
+    {
+      const std::string candidate = currentLine.empty() ? word : currentLine + " " + word;
+      if (TextFits(g, textStyle, candidate, maxWidth))
+      {
+        currentLine = candidate;
+        continue;
+      }
+
+      if (!currentLine.empty())
+      {
+        lines.push_back(currentLine);
+        currentLine.clear();
+      }
+
+      if (TextFits(g, textStyle, word, maxWidth))
+      {
+        currentLine = word;
+        continue;
+      }
+
+      SplitLongWord(g, textStyle, word, maxWidth, lines, currentLine);
+    }
+
+    if (!currentLine.empty())
+      lines.push_back(currentLine);
+
+    return lines;
+  }
+
+  static bool TextFits(IGraphics& g, const IText& textStyle, const std::string& text, float maxWidth)
+  {
+    IRECT measured;
+    g.MeasureText(textStyle, text.c_str(), measured);
+    return measured.W() <= maxWidth;
+  }
+
+  static void SplitLongWord(IGraphics& g, const IText& textStyle, const std::string& word, float maxWidth,
+                            std::vector<std::string>& lines, std::string& currentLine)
+  {
+    size_t start = 0;
+    while (start < word.size())
+    {
+      size_t length = 1;
+      while (start + length <= word.size() && TextFits(g, textStyle, word.substr(start, length), maxWidth))
+        length++;
+
+      if (length > 1)
+        length--;
+
+      const std::string part = word.substr(start, length);
+      if (start + length >= word.size())
+        currentLine = part;
+      else
+        lines.push_back(part);
+
+      start += length;
+    }
+  }
+
+  IRECT GetSubfolderPromptCardBounds() const
+  {
+    return mRECT.GetCentredInside(kSubfolderPromptCardWidth, kSubfolderPromptCardHeight);
+  }
+
+  IRECT GetSubfolderPromptTextBounds() const
+  {
+    const auto card = GetSubfolderPromptCardBounds();
+    return IRECT(card.L + kSubfolderPromptCardPadding, card.T + kSubfolderPromptCardPadding,
+                 card.R - kSubfolderPromptCardPadding,
+                 card.T + kSubfolderPromptCardPadding + kSubfolderPromptTextHeight);
+  }
+
+  IRECT GetSubfolderSelectButtonBounds() const
+  {
+    const auto card = GetSubfolderPromptCardBounds();
+    const float totalButtonWidth = kSubfolderPromptSelectButtonWidth + kSubfolderPromptButtonGap +
+                                   kSubfolderPromptLoadAllButtonWidth;
+    const float left = card.MW() - (totalButtonWidth / 2.f);
+    const float top = GetSubfolderPromptTextBounds().B + kSubfolderPromptTextButtonGap;
+    return IRECT(left, top, left + kSubfolderPromptSelectButtonWidth, top + kSettingsButtonHeight);
+  }
+
+  IRECT GetSubfolderLoadAllButtonBounds() const
+  {
+    const auto select = GetSubfolderSelectButtonBounds();
+    return IRECT(select.R + kSubfolderPromptButtonGap, select.T,
+                 select.R + kSubfolderPromptButtonGap + kSubfolderPromptLoadAllButtonWidth, select.B);
+  }
+
+  void DrawSubfolderPrompt(IGraphics& g)
+  {
+    if (!mShowingSubfolderPrompt)
+      return;
+
+    static constexpr const char* kPromptText =
+      "These captures are organised into sub-folders on your system. Select the sub-folder you'd like to load "
+      "or load all files found in all sub-folders (this might have performance implications).";
+
+    const auto card = GetSubfolderPromptCardBounds();
+    const auto textBounds = GetSubfolderPromptTextBounds();
+    const IText text(kSelectorTextSize, kPDForeground, kPDFontMedium, EAlign::Center, EVAlign::Middle);
+    const auto lines = WrapTextToFit(g, text, kPromptText, textBounds.W());
+    const float lineHeight = text.mSize + 2.f;
+    const float textHeight = static_cast<float>(lines.size()) * lineHeight;
+    float y = textBounds.MH() - (textHeight / 2.f);
+
+    g.FillRect(kPDForeground.WithOpacity(0.8f), mRECT);
+    g.FillRoundRect(kPDBackground, card, kSubfolderPromptCardRadius, &mBlend);
+
+    for (const auto& line : lines)
+    {
+      const IRECT lineBounds(textBounds.L, y, textBounds.R, y + lineHeight);
+      g.DrawText(text, line.c_str(), lineBounds, &mBlend);
+      y += lineHeight;
+    }
+
+    DrawGeneralButton(g, GetSubfolderSelectButtonBounds(), "Select sub-folder");
+    DrawGeneralButton(g, GetSubfolderLoadAllButtonBounds(), "Load all");
+  }
+
+  void DrawGeneralButton(IGraphics& g, const IRECT& bounds, const char* label)
+  {
+    const IText text(kSelectorTextSize, kPDForeground, kPDFontMedium, EAlign::Center, EVAlign::Middle);
+    g.DrawRoundRect(kPDForeground, bounds, kSettingsButtonRadius, &mBlend, kSettingsButtonBorderSize);
+    g.DrawText(text, label, bounds, &mBlend);
+  }
+
+  void HandleSubfolderPromptMouseDown(float x, float y)
+  {
+    if (GetSubfolderSelectButtonBounds().Contains(x, y))
+    {
+      PromptForSubfolder();
+      return;
+    }
+
+    if (GetSubfolderLoadAllButtonBounds().Contains(x, y))
+    {
+      LoadFolderFiles(mSubfolderPromptFolder.recursiveFiles);
+      return;
+    }
+
+    if (!GetSubfolderPromptCardBounds().Contains(x, y))
+      HideSubfolderPrompt();
+  }
+
+  void ShowSubfolderPrompt(const Folder& folder)
+  {
+    mSubfolderPromptFolder = Folder {};
+    mSubfolderPromptFolder.name = folder.name;
+    mSubfolderPromptFolder.path = folder.path;
+    mSubfolderPromptFolder.directFiles = folder.directFiles;
+    mSubfolderPromptFolder.recursiveFiles = folder.recursiveFiles;
+    mSubfolderPromptFolder.hasDirectSubfolders = folder.hasDirectSubfolders;
+    mShowingSubfolderPrompt = true;
+    SetDirty(false);
+  }
+
+  void HideSubfolderPrompt()
+  {
+    mShowingSubfolderPrompt = false;
+    mSubfolderPromptFolder = Folder {};
+    SetDirty(false);
+  }
+
+  void PromptForSubfolder()
+  {
+    WDL_String directory(mSubfolderPromptFolder.path.c_str());
+    mShowingSubfolderPrompt = false;
+    SetDirty(false);
+
+    GetUI()->PromptForDirectory(directory, [this](const WDL_String& fileName, const WDL_String& path) {
+      if (!path.GetLength())
+        return;
+
+      bool readError = false;
+      Folder folder;
+      if (!BuildRecursiveLoadableFolder(std::filesystem::u8path(path.Get()), folder, readError))
+        return;
+
+      if (folder.hasDirectSubfolders)
+      {
+        ShowSubfolderPrompt(folder);
+        return;
+      }
+
+      LoadFolderFiles(folder.directFiles.empty() ? folder.recursiveFiles : folder.directFiles);
+    });
+  }
+
+  void SelectFolderAtPoint(float x, float y)
+  {
+    const auto scrollArea = GetScrollArea();
+    if (!scrollArea.Contains(x, y))
+      return;
+
+    const int index = GetFolderIndexAtPoint(x, y);
+    if (index < 0 || index >= static_cast<int>(mFolders.size()))
+      return;
+
+    const auto& folder = mFolders[static_cast<size_t>(index)];
+    if (folder.hasDirectSubfolders)
+    {
+      ShowSubfolderPrompt(folder);
+      return;
+    }
+
+    LoadFolderFiles(folder.directFiles);
+  }
+
+  void LoadFolderFiles(std::vector<std::string> files)
+  {
+    NormalizeAndSortFiles(files);
+    if (files.empty())
+      return;
+
+    WDL_String path(files.front().c_str());
+    if (auto* ui = GetUI())
+    {
+      if (auto* selector = ui->GetControlWithTag(kCtrlTagSelectorArea))
+      {
+        if (mTarget == Target::Amp)
+          selector->As<SelectorAreaControl>()->SetPendingAmpFiles(files);
+        else
+          selector->As<SelectorAreaControl>()->SetPendingCabFiles(files);
+      }
+    }
+
+    if (mTarget == Target::Amp)
+      PLUG()->LoadNAMFile(path);
+    else
+      PLUG()->LoadIRFile(path);
+
+    CloseScreen();
+  }
+
+  void CloseScreen()
+  {
+    ReleaseThumbnails();
+    Hide(true);
+    if (auto* ui = GetUI())
+      ui->SetAllControlsDirty();
+  }
+
+  int GetFolderIndexAtPoint(float x, float y) const
+  {
+    const auto scrollArea = GetScrollArea();
+    const float localY = y - scrollArea.T + mScroll;
+    if (localY < 0.f)
+      return -1;
+
+    const int row = static_cast<int>(localY / kAmpSelectorCardHeight);
+    const int column = static_cast<int>((x - scrollArea.L) / kAmpSelectorCardWidth);
+    if (column < 0 || column >= kAmpSelectorColumns)
+      return -1;
+
+    const int index = row * kAmpSelectorColumns + column;
+    if (index < 0 || index >= static_cast<int>(mFolders.size()))
+      return -1;
+
+    return index;
+  }
+
+  static std::vector<std::string> FindFiles(const std::filesystem::path& directory, const std::string& extension)
+  {
+    std::vector<std::string> files;
+    std::error_code ec;
+    for (std::filesystem::directory_iterator it(directory, std::filesystem::directory_options::skip_permission_denied, ec),
+         end;
+         !ec && it != end; it.increment(ec))
+    {
+      std::error_code entryError;
+      if (it->is_regular_file(entryError) && HasExtension(it->path(), extension.c_str()))
+        files.push_back(PathString(it->path()));
+    }
+
+    std::sort(files.begin(), files.end(), [](const auto& a, const auto& b) { return ToLower(a) < ToLower(b); });
+    return files;
+  }
+
+  static void NormalizeAndSortFiles(std::vector<std::string>& files)
+  {
+    for (auto& file : files)
+      file = NormalizePath(file.c_str());
+
+    std::sort(files.begin(), files.end(), [](const auto& a, const auto& b) { return ToLower(a) < ToLower(b); });
+    files.erase(std::unique(files.begin(), files.end()), files.end());
+  }
+
+  static void FindFilesRecursive(const std::filesystem::path& directory, const std::string& extension,
+                                 std::vector<std::string>& files, bool& readError)
+  {
+    std::vector<std::filesystem::directory_entry> entries;
+    std::error_code ec;
+
+    for (std::filesystem::directory_iterator it(directory, std::filesystem::directory_options::skip_permission_denied,
+                                                ec),
+         end;
+         !ec && it != end; it.increment(ec))
+    {
+      entries.push_back(*it);
+    }
+
+    if (ec)
+    {
+      readError = true;
+      return;
+    }
+
+    std::sort(entries.begin(), entries.end(), [](const auto& a, const auto& b) {
+      return ToLower(a.path().filename().string()) < ToLower(b.path().filename().string());
+    });
+
+    for (const auto& entry : entries)
+    {
+      std::error_code entryError;
+      if (entry.is_regular_file(entryError) && HasExtension(entry.path(), extension.c_str()))
+        files.push_back(PathString(entry.path()));
+    }
+
+    for (const auto& entry : entries)
+    {
+      std::error_code entryError;
+      if (entry.is_symlink(entryError))
+        continue;
+
+      entryError.clear();
+      if (entry.is_directory(entryError))
+        FindFilesRecursive(entry.path(), extension, files, readError);
+    }
+  }
+
+  void LoadFolderThumbnail(Folder& folder)
+  {
+    if (folder.thumbnail.IsValid() || folder.thumbnailPath.empty())
+      return;
+
+    std::error_code ec;
+    const auto path = std::filesystem::u8path(folder.thumbnailPath);
+    if (std::filesystem::is_regular_file(path, ec) && IsJPG(path))
+      folder.thumbnail = GetUI()->LoadBitmap(folder.thumbnailPath.c_str());
+
+    if (folder.thumbnail.IsValid() && (folder.thumbnail.W() <= 0 || folder.thumbnail.H() <= 0))
+      folder.thumbnail = IBitmap();
+  }
+
+  void Rescan()
+  {
+    ReleaseThumbnails();
+    mFolders.clear();
+    mScroll = 0.f;
+
+    if (!DirectoryExists(mRootDirectory))
+      return;
+
+    bool readError = false;
+    if (mTarget == Target::Amp)
+      RescanAmpFolders(readError);
+    else
+      RescanTopLevelFolders(readError);
+  }
+
+  void ReleaseThumbnails()
+  {
+    for (auto& folder : mFolders)
+    {
+#ifdef OS_MAC
+      if (auto* ui = GetUI(); ui != nullptr && folder.thumbnail.IsValid())
+        ui->ReleaseBitmap(folder.thumbnail);
+#endif
+      folder.thumbnail = IBitmap();
+    }
+  }
+
+  void RescanAmpFolders(bool& readError)
+  {
+    Folder rootFolder;
+    if (BuildLoadableFolder(std::filesystem::u8path(mRootDirectory), rootFolder, readError))
+      mFolders.push_back(std::move(rootFolder));
+
+    std::vector<std::filesystem::directory_entry> entries;
+    std::error_code ec;
+    for (std::filesystem::directory_iterator it(std::filesystem::u8path(mRootDirectory),
+                                                std::filesystem::directory_options::skip_permission_denied,
+                                                ec),
+         end;
+         !ec && it != end; it.increment(ec))
+    {
+      entries.push_back(*it);
+    }
+
+    std::sort(entries.begin(), entries.end(), [](const auto& a, const auto& b) {
+      return ToLower(a.path().filename().string()) < ToLower(b.path().filename().string());
+    });
+
+    for (const auto& entry : entries)
+    {
+      std::error_code entryError;
+      if (entry.is_symlink(entryError))
+        continue;
+
+      entryError.clear();
+      if (!entry.is_directory(entryError))
+        continue;
+
+      Folder folder;
+      if (BuildRecursiveLoadableFolder(entry.path(), folder, readError))
+        mFolders.push_back(std::move(folder));
+    }
+  }
+
+  void RescanTopLevelFolders(bool& readError)
+  {
+    std::vector<std::filesystem::directory_entry> entries;
+    std::error_code ec;
+    for (std::filesystem::directory_iterator it(std::filesystem::u8path(mRootDirectory),
+                                                std::filesystem::directory_options::skip_permission_denied,
+                                                ec),
+         end;
+         !ec && it != end; it.increment(ec))
+    {
+      entries.push_back(*it);
+    }
+
+    std::sort(entries.begin(), entries.end(), [](const auto& a, const auto& b) {
+      return ToLower(a.path().filename().string()) < ToLower(b.path().filename().string());
+    });
+
+    for (const auto& entry : entries)
+    {
+      std::error_code entryError;
+      if (entry.is_symlink(entryError))
+        continue;
+
+      entryError.clear();
+      if (entry.is_directory(entryError))
+      {
+        Folder folder;
+        if (BuildRecursiveLoadableFolder(entry.path(), folder, readError))
+          mFolders.push_back(std::move(folder));
+      }
+    }
+  }
+
+  bool BuildRecursiveLoadableFolder(const std::filesystem::path& directory, Folder& folder, bool& readError)
+  {
+    std::vector<std::string> files;
+    FindFilesRecursive(directory, mExtension, files, readError);
+    NormalizeAndSortFiles(files);
+    if (files.empty())
+      return false;
+
+    folder.name = FileName(directory);
+    folder.path = PathString(directory);
+    folder.directFiles = FindFiles(directory, mExtension);
+    folder.recursiveFiles = std::move(files);
+    folder.hasDirectSubfolders = HasDirectSubfolders(directory, readError);
+
+    std::filesystem::path thumbnailPath;
+    if (FindFirstJPG(directory, thumbnailPath))
+      folder.thumbnailPath = PathString(PrepareThumbnailFile(thumbnailPath));
+    LoadFolderThumbnail(folder);
+
+    return true;
+  }
+
+  bool BuildLoadableFolder(const std::filesystem::path& directory, Folder& folder, bool& readError)
+  {
+    folder.directFiles = FindFiles(directory, mExtension);
+    if (folder.directFiles.empty())
+      return false;
+
+    folder.name = FileName(directory);
+    folder.path = PathString(directory);
+    folder.hasDirectSubfolders = HasDirectSubfolders(directory, readError);
+    if (folder.hasDirectSubfolders)
+    {
+      FindFilesRecursive(directory, mExtension, folder.recursiveFiles, readError);
+      NormalizeAndSortFiles(folder.recursiveFiles);
+    }
+    else
+    {
+      folder.recursiveFiles = folder.directFiles;
+    }
+
+    std::filesystem::path thumbnailPath;
+    if (FindFirstJPG(directory, thumbnailPath))
+      folder.thumbnailPath = PathString(PrepareThumbnailFile(thumbnailPath));
+    LoadFolderThumbnail(folder);
+
+    return true;
+  }
+
+  static bool HasDirectSubfolders(const std::filesystem::path& directory, bool& readError)
+  {
+    std::error_code ec;
+    std::filesystem::directory_iterator it(directory, std::filesystem::directory_options::skip_permission_denied, ec);
+    if (ec)
+    {
+      readError = true;
+      return false;
+    }
+
+    for (std::filesystem::directory_iterator end; it != end; it.increment(ec))
+    {
+      if (ec)
+      {
+        readError = true;
+        return false;
+      }
+
+      std::error_code entryError;
+      if (!it->is_symlink(entryError))
+      {
+        entryError.clear();
+        if (it->is_directory(entryError))
+          return true;
+      }
+    }
+
+    return false;
+  }
+
+  static bool CountDirectFilesWithExtension(const std::filesystem::path& directory, const char* extension, bool& readError)
+  {
+    std::error_code ec;
+    std::filesystem::directory_iterator it(directory, std::filesystem::directory_options::skip_permission_denied, ec);
+    if (ec)
+    {
+      readError = true;
+      return false;
+    }
+
+    for (std::filesystem::directory_iterator end; it != end; it.increment(ec))
+    {
+      if (ec)
+      {
+        readError = true;
+        return false;
+      }
+
+      std::error_code entryError;
+      if (it->is_regular_file(entryError) && HasExtension(it->path(), extension))
+        return true;
+    }
+
+    return false;
+  }
+
+  static bool FindFirstJPG(const std::filesystem::path& directory, std::filesystem::path& result)
+  {
+    std::vector<std::filesystem::directory_entry> entries;
+    std::error_code ec;
+
+    for (std::filesystem::directory_iterator it(directory, std::filesystem::directory_options::skip_permission_denied,
+                                                ec),
+         end;
+         !ec && it != end; it.increment(ec))
+    {
+      entries.push_back(*it);
+    }
+
+    std::sort(entries.begin(), entries.end(), [](const auto& a, const auto& b) {
+      return ToLower(a.path().filename().string()) < ToLower(b.path().filename().string());
+    });
+
+    for (const auto& entry : entries)
+    {
+      std::error_code entryError;
+      if (entry.is_regular_file(entryError) && IsGeneratedThumbnailJPG(entry.path()))
+      {
+        result = entry.path();
+        return true;
+      }
+    }
+
+    for (const auto& entry : entries)
+    {
+      std::error_code entryError;
+      if (entry.is_regular_file(entryError) && IsJPG(entry.path()))
+      {
+        result = entry.path();
+        return true;
+      }
+    }
+
+    for (const auto& entry : entries)
+    {
+      std::error_code entryError;
+      if (entry.is_symlink(entryError))
+        continue;
+
+      entryError.clear();
+      if (entry.is_directory(entryError) && FindFirstJPG(entry.path(), result))
+        return true;
+    }
+
+    return false;
+  }
+
+  static std::filesystem::path PrepareThumbnailFile(const std::filesystem::path& source)
+  {
+    if (IsGeneratedThumbnailJPG(source))
+      return source;
+
+    const auto target = GeneratedThumbnailPath(source);
+    std::error_code ec;
+    if (std::filesystem::is_regular_file(target, ec))
+      return target;
+
+#ifdef OS_MAC
+    if (CreateThumbnailJPG(source, target))
+      return target;
+#endif
+
+    return source;
+  }
+
+  static std::filesystem::path GeneratedThumbnailPath(const std::filesystem::path& source)
+  {
+    return source.parent_path() / (source.stem().string() + "@181px.jpg");
+  }
+
+  static std::string ToLower(std::string s)
+  {
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return s;
+  }
+
+  static bool HasExtension(const std::filesystem::path& path, const char* extension)
+  {
+    return ToLower(path.extension().string()) == std::string(".") + extension;
+  }
+
+  static bool IsJPG(const std::filesystem::path& path)
+  {
+    return ToLower(path.extension().string()) == ".jpg";
+  }
+
+  static bool IsGeneratedThumbnailJPG(const std::filesystem::path& path)
+  {
+    const std::string stem = ToLower(path.stem().string());
+    return IsJPG(path) && stem.size() >= 6 && stem.ends_with("@181px");
+  }
+
+#ifdef OS_MAC
+  static bool CreateThumbnailJPG(const std::filesystem::path& sourcePath, const std::filesystem::path& targetPath)
+  {
+    std::error_code ec;
+    if (!std::filesystem::is_regular_file(sourcePath, ec))
+      return false;
+
+    const std::string pathString = sourcePath.string();
+    CFURLRef url = CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault,
+                                                           reinterpret_cast<const UInt8*>(pathString.c_str()),
+                                                           static_cast<CFIndex>(pathString.size()),
+                                                           false);
+    if (url == nullptr)
+      return false;
+
+    CGImageSourceRef source = CGImageSourceCreateWithURL(url, nullptr);
+    CFRelease(url);
+
+    if (source == nullptr)
+      return false;
+
+    int maxPixelSize = static_cast<int>(kAmpSelectorImageSize);
+    CFNumberRef maxPixelSizeValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &maxPixelSize);
+    if (maxPixelSizeValue == nullptr)
+    {
+      CFRelease(source);
+      return false;
+    }
+
+    const void* thumbnailKeys[] = {kCGImageSourceCreateThumbnailFromImageAlways,
+                                   kCGImageSourceThumbnailMaxPixelSize,
+                                   kCGImageSourceCreateThumbnailWithTransform};
+    const void* thumbnailValues[] = {kCFBooleanTrue, maxPixelSizeValue, kCFBooleanTrue};
+    CFDictionaryRef thumbnailOptions =
+      CFDictionaryCreate(kCFAllocatorDefault, thumbnailKeys, thumbnailValues, 3, &kCFTypeDictionaryKeyCallBacks,
+                         &kCFTypeDictionaryValueCallBacks);
+    CFRelease(maxPixelSizeValue);
+
+    if (thumbnailOptions == nullptr)
+    {
+      CFRelease(source);
+      return false;
+    }
+
+    CGImageRef thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, thumbnailOptions);
+    CFRelease(thumbnailOptions);
+    CFRelease(source);
+
+    if (thumbnail == nullptr || CGImageGetWidth(thumbnail) == 0 || CGImageGetHeight(thumbnail) == 0)
+    {
+      if (thumbnail != nullptr)
+        CGImageRelease(thumbnail);
+      return false;
+    }
+
+    const std::string targetString = targetPath.string();
+    CFURLRef targetURL = CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault,
+                                                                 reinterpret_cast<const UInt8*>(targetString.c_str()),
+                                                                 static_cast<CFIndex>(targetString.size()),
+                                                                 false);
+    if (targetURL == nullptr)
+    {
+      CGImageRelease(thumbnail);
+      return false;
+    }
+
+    CGImageDestinationRef destination = CGImageDestinationCreateWithURL(targetURL, CFSTR("public.jpeg"), 1, nullptr);
+    CFRelease(targetURL);
+
+    if (destination == nullptr)
+    {
+      CGImageRelease(thumbnail);
+      return false;
+    }
+
+    float quality = 0.82f;
+    CFNumberRef qualityValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberFloatType, &quality);
+    CFDictionaryRef properties = nullptr;
+    if (qualityValue != nullptr)
+    {
+      const void* propertyKeys[] = {kCGImageDestinationLossyCompressionQuality};
+      const void* propertyValues[] = {qualityValue};
+      properties = CFDictionaryCreate(kCFAllocatorDefault, propertyKeys, propertyValues, 1,
+                                      &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+      CFRelease(qualityValue);
+    }
+
+    CGImageDestinationAddImage(destination, thumbnail, properties);
+    const bool ok = CGImageDestinationFinalize(destination);
+    if (properties != nullptr)
+      CFRelease(properties);
+    CFRelease(destination);
+    CGImageRelease(thumbnail);
+
+    return ok && std::filesystem::is_regular_file(targetPath, ec);
+  }
+#endif
+
+  static std::string PathString(const std::filesystem::path& path)
+  {
+    return path.lexically_normal().string();
+  }
+
+  static std::string NormalizePath(const char* path)
+  {
+    if (!CStringHasContents(path))
+      return "";
+
+    try
+    {
+      return PathString(std::filesystem::u8path(path));
+    }
+    catch (...)
+    {
+      return path;
+    }
+  }
+
+  static bool DirectoryExists(const std::string& path)
+  {
+    if (path.empty())
+      return false;
+
+    std::error_code ec;
+    return std::filesystem::is_directory(std::filesystem::u8path(path), ec);
+  }
+
+  static std::string FileName(const std::filesystem::path& path)
+  {
+    const std::string name = path.filename().string();
+    return name.empty() ? path.string() : name;
+  }
+
+  ISVG mBackIcon;
+  IBitmap mFallbackImage;
+  std::string mTitle;
+  std::string mExtension;
+  Target mTarget;
+  std::string mRootDirectory;
+  std::vector<Folder> mFolders;
+  Folder mSubfolderPromptFolder;
+  bool mShowingSubfolderPrompt = false;
+  float mScroll = 0.f;
+};
+
 bool GetLibrarySettingsPath(std::filesystem::path& path)
 {
 #if defined OS_MAC || defined OS_WIN
@@ -806,10 +2595,18 @@ void AttachMainHeaderComponent(IGraphics& graphics, const IRECT& bounds, const I
     settingsIcon));
 }
 
-void AttachMainAreaComponent(IGraphics& graphics, const IRECT& bounds, const IBitmap& ampImage, const IBitmap& cabImage)
+void AttachHeaderLoadingBarComponent(IGraphics& graphics, const IRECT& bounds)
+{
+  const float top = bounds.T + kMainHeaderHeight - (kHeaderLoadingBarHeight / 2.f);
+  const auto loadingBarBounds = IRECT(bounds.L, top, bounds.R, top + kHeaderLoadingBarHeight);
+  graphics.AttachControl(new PDHeaderLoadingBarControl(loadingBarBounds), kCtrlTagHeaderLoadingBar);
+}
+
+void AttachMainAreaComponent(IGraphics& graphics, const IRECT& bounds, const IBitmap& ampImage, const IBitmap& cabImage,
+                             const IBitmap& noAmpImage, const IBitmap& noCabImage)
 {
   const auto mainAreaBounds = IRECT(bounds.L, bounds.T + kMainAreaTop, bounds.R, bounds.T + kMainAreaTop + kMainAreaHeight);
-  graphics.AttachControl(new MainAreaControl(mainAreaBounds, ampImage, cabImage))->SetIgnoreMouse(true);
+  graphics.AttachControl(new MainAreaControl(mainAreaBounds, ampImage, cabImage, noAmpImage, noCabImage), kCtrlTagMainArea);
 }
 
 void AttachSelectorAreaComponent(IGraphics& graphics, const IRECT& bounds, const ISVG& leftArrow,
@@ -817,7 +2614,7 @@ void AttachSelectorAreaComponent(IGraphics& graphics, const IRECT& bounds, const
 {
   const auto selectorAreaBounds =
     IRECT(bounds.L, bounds.T + kSelectorAreaTop, bounds.R, bounds.T + kSelectorAreaTop + kSelectorAreaHeight);
-  graphics.AttachControl(new SelectorAreaControl(selectorAreaBounds, leftArrow, rightArrow))->SetIgnoreMouse(true);
+  graphics.AttachControl(new SelectorAreaControl(selectorAreaBounds, leftArrow, rightArrow), kCtrlTagSelectorArea);
 }
 
 void AttachControlAreaComponent(IGraphics& graphics, const IRECT& bounds, const ISVG& powerIcon)
@@ -945,6 +2742,24 @@ void AttachSettingsScreenComponent(IGraphics& graphics, const IRECT& bounds, con
   graphics.AttachControl(new PDSettingsScreenControl(bounds, backIcon), kCtrlTagSettingsBox)->Hide(true);
 }
 
+void AttachAmpSelectorScreenComponent(IGraphics& graphics, const IRECT& bounds, const ISVG& backIcon,
+                                      const IBitmap& fallbackImage)
+{
+  graphics.AttachControl(new PDAmpSelectorScreenControl(bounds, backIcon, fallbackImage, "Amps", "nam",
+                                                        PDAmpSelectorScreenControl::Target::Amp),
+                         kCtrlTagAmpSelectorScreen)
+    ->Hide(true);
+}
+
+void AttachCabSelectorScreenComponent(IGraphics& graphics, const IRECT& bounds, const ISVG& backIcon,
+                                      const IBitmap& fallbackImage)
+{
+  graphics.AttachControl(new PDAmpSelectorScreenControl(bounds, backIcon, fallbackImage, "Cabs", "wav",
+                                                        PDAmpSelectorScreenControl::Target::Cab),
+                         kCtrlTagCabSelectorScreen)
+    ->Hide(true);
+}
+
 void AttachSlimComponent(IGraphics& graphics, const UILayout& layout, const UIAssets& assets)
 {
   auto hideSlimOverlay = [](IControl* pCaller) {
@@ -1027,22 +2842,31 @@ NeuralAmpModeler::NeuralAmpModeler(const InstanceInfo& info)
     const auto settingsIcon = pGraphics->LoadSVG(PD_ICON_SETTINGS_FN);
     const auto settingsBackIcon = pGraphics->LoadSVG(PD_ICON_ARROW_LEFT_FN);
     const auto powerIcon = pGraphics->LoadSVG(PD_ICON_POWER_FN);
-    const auto ampImage = pGraphics->LoadBitmap(PD_EXAMPLE_AMP_FN);
-    const auto cabImage = pGraphics->LoadBitmap(PD_EXAMPLE_CAB_FN);
+    const auto noAmpImage = pGraphics->LoadBitmap(PD_NO_AMP_FN);
+    const auto noCabImage = pGraphics->LoadBitmap(PD_NO_CAB_FN);
     const auto chevronLeft = pGraphics->LoadSVG(PD_CHEVRON_LEFT_FN);
     const auto chevronRight = pGraphics->LoadSVG(PD_CHEVRON_RIGHT_FN);
 
     AttachShellComponent(*pGraphics);
     AttachMainHeaderComponent(*pGraphics, pGraphics->GetBounds(), logo, settingsIcon);
-    AttachMainAreaComponent(*pGraphics, pGraphics->GetBounds(), ampImage, cabImage);
+    AttachMainAreaComponent(*pGraphics, pGraphics->GetBounds(), noAmpImage, noCabImage, noAmpImage, noCabImage);
     AttachSelectorAreaComponent(*pGraphics, pGraphics->GetBounds(), chevronLeft, chevronRight);
     AttachControlAreaComponent(*pGraphics, pGraphics->GetBounds(), powerIcon);
     AttachSettingsScreenComponent(*pGraphics, pGraphics->GetBounds(), settingsBackIcon);
+    AttachAmpSelectorScreenComponent(*pGraphics, pGraphics->GetBounds(), settingsBackIcon, noAmpImage);
+    AttachCabSelectorScreenComponent(*pGraphics, pGraphics->GetBounds(), settingsBackIcon, noCabImage);
+    AttachHeaderLoadingBarComponent(*pGraphics, pGraphics->GetBounds());
   };
 }
 
 NeuralAmpModeler::~NeuralAmpModeler()
 {
+  mShuttingDown = true;
+  for (auto& task : mLoadTasks)
+  {
+    if (task.valid())
+      task.get();
+  }
   _DeallocateIOPointers();
 }
 
@@ -1144,6 +2968,19 @@ void NeuralAmpModeler::OnReset()
 
 void NeuralAmpModeler::OnIdle()
 {
+  _ProcessAsyncLoadCompletions();
+  _CollectFinishedLoadTasks();
+
+  if (auto* pGraphics = GetUI())
+  {
+    if (auto* loadingBar = pGraphics->GetControlWithTag(kCtrlTagHeaderLoadingBar))
+    {
+      auto* headerLoadingBar = loadingBar->As<PDHeaderLoadingBarControl>();
+      headerLoadingBar->SetLoading(mModelLoadInProgress || mIRLoadInProgress);
+      headerLoadingBar->Tick();
+    }
+  }
+
   mInputSender.TransmitData(*this);
   mOutputSender.TransmitData(*this);
 
@@ -1167,7 +3004,7 @@ void NeuralAmpModeler::OnIdle()
         p->Hide(true);
       if (auto* p = pGraphics->GetControlWithTag(kCtrlTagSlimKnob))
         p->Hide(true);
-      SendControlMsgFromDelegate(kCtrlTagModelThumbnail, kMsgTagClearModel);
+      _SendControlMsgIfAttached(kCtrlTagModelThumbnail, kMsgTagClearModel);
       pGraphics->SetAllControlsDirty();
       mModelCleared = false;
     }
@@ -1217,27 +3054,152 @@ void NeuralAmpModeler::OnUIOpen()
 
   if (mNAMPath.GetLength())
   {
-    SendControlMsgFromDelegate(kCtrlTagModelFileBrowser, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
-    SendControlMsgFromDelegate(kCtrlTagLibrarySidebar, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
-    SendControlMsgFromDelegate(kCtrlTagModelThumbnail, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
+    _SendControlMsgIfAttached(kCtrlTagModelFileBrowser, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
+    _SendControlMsgIfAttached(kCtrlTagLibrarySidebar, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
+    _SendControlMsgIfAttached(kCtrlTagModelThumbnail, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
+    _SendControlMsgIfAttached(kCtrlTagMainArea, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
+    _SendControlMsgIfAttached(kCtrlTagSelectorArea, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
     // If it's not loaded yet, then mark as failed.
     // If it's yet to be loaded, then the completion handler will set us straight once it runs.
-    if (mModel == nullptr && mStagedModel == nullptr)
-      SendControlMsgFromDelegate(kCtrlTagModelFileBrowser, kMsgTagLoadFailed);
+    if (mModel == nullptr && mStagedModel == nullptr && !mModelLoadInProgress)
+      _SendControlMsgIfAttached(kCtrlTagModelFileBrowser, kMsgTagLoadFailed);
   }
 
   if (mIRPath.GetLength())
   {
-    SendControlMsgFromDelegate(kCtrlTagIRFileBrowser, kMsgTagLoadedIR, mIRPath.GetLength(), mIRPath.Get());
-    SendControlMsgFromDelegate(kCtrlTagLibrarySidebar, kMsgTagLoadedIR, mIRPath.GetLength(), mIRPath.Get());
-    if (mIR == nullptr && mStagedIR == nullptr)
-      SendControlMsgFromDelegate(kCtrlTagIRFileBrowser, kMsgTagLoadFailed);
+    _SendControlMsgIfAttached(kCtrlTagIRFileBrowser, kMsgTagLoadedIR, mIRPath.GetLength(), mIRPath.Get());
+    _SendControlMsgIfAttached(kCtrlTagLibrarySidebar, kMsgTagLoadedIR, mIRPath.GetLength(), mIRPath.Get());
+    _SendControlMsgIfAttached(kCtrlTagMainArea, kMsgTagLoadedIR, mIRPath.GetLength(), mIRPath.Get());
+    _SendControlMsgIfAttached(kCtrlTagSelectorArea, kMsgTagLoadedIR, mIRPath.GetLength(), mIRPath.Get());
+    if (mIR == nullptr && mStagedIR == nullptr && !mIRLoadInProgress)
+      _SendControlMsgIfAttached(kCtrlTagIRFileBrowser, kMsgTagLoadFailed);
   }
 
   if (mModel != nullptr)
   {
     _UpdateControlsFromModel();
   }
+}
+
+void NeuralAmpModeler::_SendControlMsgIfAttached(int ctrlTag, int msgTag, int dataSize, const void* pData)
+{
+  if (auto* pGraphics = GetUI())
+  {
+    if (pGraphics->GetControlWithTag(ctrlTag) != nullptr)
+      SendControlMsgFromDelegate(ctrlTag, msgTag, dataSize, pData);
+  }
+}
+
+void NeuralAmpModeler::_ProcessAsyncLoadCompletions()
+{
+  std::unique_ptr<ResamplingNAM> completedModel;
+  std::string completedModelPath;
+  std::string completedModelError;
+  uint64_t completedModelRequestId = 0;
+  bool hasCompletedModel = false;
+
+  std::unique_ptr<dsp::ImpulseResponse> completedIR;
+  std::string completedIRPath;
+  dsp::wav::LoadReturnCode completedIRState = dsp::wav::LoadReturnCode::ERROR_OTHER;
+  uint64_t completedIRRequestId = 0;
+  bool hasCompletedIR = false;
+
+  {
+    std::lock_guard<std::mutex> lock(mAsyncLoadMutex);
+    if (mPendingModelLoadComplete)
+    {
+      completedModel = std::move(mPendingModel);
+      completedModelPath = std::move(mPendingModelPath);
+      completedModelError = std::move(mPendingModelError);
+      completedModelRequestId = mPendingModelRequestId;
+      mPendingModelLoadComplete = false;
+      hasCompletedModel = true;
+    }
+
+    if (mPendingIRLoadComplete)
+    {
+      completedIR = std::move(mPendingIR);
+      completedIRPath = std::move(mPendingIRPath);
+      completedIRState = mPendingIRState;
+      completedIRRequestId = mPendingIRRequestId;
+      mPendingIRLoadComplete = false;
+      hasCompletedIR = true;
+    }
+  }
+
+  if (hasCompletedModel && completedModelRequestId == mModelLoadRequestId.load())
+  {
+    mModelLoadInProgress = false;
+    if (completedModel != nullptr)
+    {
+      {
+        std::lock_guard<std::mutex> lock(mStagingMutex);
+        mStagedModel = std::move(completedModel);
+        mNAMPath.Set(completedModelPath.c_str());
+      }
+      _SendLoadedModelMessages();
+    }
+    else
+    {
+      _SendControlMsgIfAttached(kCtrlTagModelFileBrowser, kMsgTagLoadFailed);
+      std::cerr << "Failed to read DSP module" << std::endl;
+      if (!completedModelError.empty())
+        std::cerr << completedModelError << std::endl;
+    }
+  }
+
+  if (hasCompletedIR && completedIRRequestId == mIRLoadRequestId.load())
+  {
+    mIRLoadInProgress = false;
+    if (completedIRState == dsp::wav::LoadReturnCode::SUCCESS && completedIR != nullptr)
+    {
+      {
+        std::lock_guard<std::mutex> lock(mStagingMutex);
+        mStagedIR = std::move(completedIR);
+        mIRPath.Set(completedIRPath.c_str());
+      }
+      _SendLoadedIRMessages();
+    }
+    else
+    {
+      _SendControlMsgIfAttached(kCtrlTagIRFileBrowser, kMsgTagLoadFailed);
+    }
+  }
+}
+
+void NeuralAmpModeler::_CollectFinishedLoadTasks()
+{
+  std::lock_guard<std::mutex> lock(mAsyncLoadMutex);
+  auto task = mLoadTasks.begin();
+  while (task != mLoadTasks.end())
+  {
+    if (task->valid() && task->wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+    {
+      task->get();
+      task = mLoadTasks.erase(task);
+    }
+    else
+    {
+      ++task;
+    }
+  }
+}
+
+void NeuralAmpModeler::_SendLoadedModelMessages()
+{
+  _SendControlMsgIfAttached(kCtrlTagModelFileBrowser, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
+  _SendControlMsgIfAttached(kCtrlTagLibrarySidebar, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
+  _SendControlMsgIfAttached(kCtrlTagModelThumbnail, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
+  _SendControlMsgIfAttached(kCtrlTagMainArea, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
+  _SendControlMsgIfAttached(kCtrlTagSelectorArea, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
+}
+
+void NeuralAmpModeler::_SendLoadedIRMessages()
+{
+  _SendControlMsgIfAttached(kCtrlTagIRFileBrowser, kMsgTagLoadedIR, mIRPath.GetLength(), mIRPath.Get());
+  _SendControlMsgIfAttached(kCtrlTagLibrarySidebar, kMsgTagLoadedIR, mIRPath.GetLength(), mIRPath.Get());
+  _SendControlMsgIfAttached(kCtrlTagMainArea, kMsgTagLoadedIR, mIRPath.GetLength(), mIRPath.Get());
+  _SendControlMsgIfAttached(kCtrlTagSelectorArea, kMsgTagLoadedIR, mIRPath.GetLength(), mIRPath.Get());
 }
 
 void NeuralAmpModeler::SetNAMRootDirectory(const WDL_String& directory)
@@ -1264,12 +3226,120 @@ void NeuralAmpModeler::SetIRRootDirectory(const WDL_String& directory)
 
 }
 
+void NeuralAmpModeler::LoadNAMFile(const WDL_String& modelPath)
+{
+  const uint64_t requestId = ++mModelLoadRequestId;
+  const std::string path(modelPath.Get());
+  const double sampleRate = GetSampleRate();
+  const int blockSize = GetBlockSize();
+  const double slimValue = GetParam(kSlim)->Value();
+  mModelLoadInProgress = true;
+
+  std::lock_guard<std::mutex> lock(mAsyncLoadMutex);
+  mLoadTasks.emplace_back(std::async(std::launch::async, [this, requestId, path, sampleRate, blockSize, slimValue]() {
+    std::unique_ptr<ResamplingNAM> loadedModel;
+    std::string error;
+
+    try
+    {
+      auto dspPath = std::filesystem::u8path(path);
+      std::unique_ptr<nam::DSP> model = nam::get_dsp(dspPath);
+
+      if (model->NumInputChannels() != 1)
+      {
+        throw std::runtime_error("Model must have 1 input channel, but has "
+                                 + std::to_string(model->NumInputChannels()));
+      }
+      if (model->NumOutputChannels() != 1)
+      {
+        throw std::runtime_error("Model must have 1 output channel, but has "
+                                 + std::to_string(model->NumOutputChannels()));
+      }
+
+      loadedModel = std::make_unique<ResamplingNAM>(std::move(model), sampleRate);
+      loadedModel->Reset(sampleRate, blockSize);
+      if (nam::SlimmableModel* slimmable = loadedModel->GetSlimmableModel())
+        slimmable->SetSlimmableSize(slimValue);
+    }
+    catch (const std::runtime_error& e)
+    {
+      error = e.what();
+    }
+    catch (const std::exception& e)
+    {
+      error = e.what();
+    }
+    catch (...)
+    {
+      error = "Failed to read DSP module";
+    }
+
+    if (mShuttingDown || requestId != mModelLoadRequestId.load())
+      return;
+
+    std::lock_guard<std::mutex> resultLock(mAsyncLoadMutex);
+    mPendingModelRequestId = requestId;
+    mPendingModelPath = path;
+    mPendingModelError = error;
+    mPendingModel = std::move(loadedModel);
+    mPendingModelLoadComplete = true;
+  }));
+}
+
+void NeuralAmpModeler::LoadIRFile(const WDL_String& irPath)
+{
+  const uint64_t requestId = ++mIRLoadRequestId;
+  const std::string path(irPath.Get());
+  const double sampleRate = GetSampleRate();
+  mIRLoadInProgress = true;
+
+  std::lock_guard<std::mutex> lock(mAsyncLoadMutex);
+  mLoadTasks.emplace_back(std::async(std::launch::async, [this, requestId, path, sampleRate]() {
+    std::unique_ptr<dsp::ImpulseResponse> loadedIR;
+    dsp::wav::LoadReturnCode wavState = dsp::wav::LoadReturnCode::ERROR_OTHER;
+
+    try
+    {
+      auto irPathU8 = std::filesystem::u8path(path);
+      loadedIR = std::make_unique<dsp::ImpulseResponse>(irPathU8.string().c_str(), sampleRate);
+      wavState = loadedIR->GetWavState();
+    }
+    catch (const std::runtime_error& e)
+    {
+      wavState = dsp::wav::LoadReturnCode::ERROR_OTHER;
+      std::cerr << "Caught unhandled exception while attempting to load IR:" << std::endl;
+      std::cerr << e.what() << std::endl;
+    }
+    catch (...)
+    {
+      wavState = dsp::wav::LoadReturnCode::ERROR_OTHER;
+    }
+
+    if (wavState != dsp::wav::LoadReturnCode::SUCCESS)
+      loadedIR = nullptr;
+
+    if (mShuttingDown || requestId != mIRLoadRequestId.load())
+      return;
+
+    std::lock_guard<std::mutex> resultLock(mAsyncLoadMutex);
+    mPendingIRRequestId = requestId;
+    mPendingIRPath = path;
+    mPendingIRState = wavState;
+    mPendingIR = std::move(loadedIR);
+    mPendingIRLoadComplete = true;
+  }));
+}
+
 void NeuralAmpModeler::_RefreshLibrarySidebar()
 {
   if (auto* pGraphics = GetUI())
   {
     if (auto* sidebar = pGraphics->GetControlWithTag(kCtrlTagLibrarySidebar))
       sidebar->As<NAMLibrarySidebarControl>()->SetRoots(mNAMRootDirectory.Get(), mIRRootDirectory.Get());
+    if (auto* ampSelector = pGraphics->GetControlWithTag(kCtrlTagAmpSelectorScreen))
+      ampSelector->As<PDAmpSelectorScreenControl>()->SetRootDirectory(mNAMRootDirectory.Get());
+    if (auto* cabSelector = pGraphics->GetControlWithTag(kCtrlTagCabSelectorScreen))
+      cabSelector->As<PDAmpSelectorScreenControl>()->SetRootDirectory(mIRRootDirectory.Get());
     if (auto* thumbnail = pGraphics->GetControlWithTag(kCtrlTagModelThumbnail))
       thumbnail->As<NAMModelThumbnailControl>()->SetNAMRootDirectory(mNAMRootDirectory.Get());
   }
@@ -1436,6 +3506,10 @@ void NeuralAmpModeler::_AllocateIOPointers(const size_t nChans)
 
 void NeuralAmpModeler::_ApplyDSPStaging()
 {
+  std::unique_lock<std::mutex> stagingLock(mStagingMutex, std::try_to_lock);
+  if (!stagingLock.owns_lock())
+    return;
+
   // Remove marked modules
   if (mShouldRemoveModel)
   {
@@ -1498,6 +3572,8 @@ void NeuralAmpModeler::_FallbackDSP(iplug::sample** inputs, iplug::sample** outp
 
 void NeuralAmpModeler::_ResetModelAndIR(const double sampleRate, const int maxBlockSize)
 {
+  std::lock_guard<std::mutex> stagingLock(mStagingMutex);
+
   // Model
   if (mStagedModel != nullptr)
   {
@@ -1581,93 +3657,8 @@ void NeuralAmpModeler::_ApplySlimParamToLoadedNAMs()
       s->SetSlimmableSize(v);
   };
   apply(mModel.get());
+  std::lock_guard<std::mutex> stagingLock(mStagingMutex);
   apply(mStagedModel.get());
-}
-
-std::string NeuralAmpModeler::_StageModel(const WDL_String& modelPath)
-{
-  WDL_String previousNAMPath = mNAMPath;
-  try
-  {
-    auto dspPath = std::filesystem::u8path(modelPath.Get());
-    std::unique_ptr<nam::DSP> model = nam::get_dsp(dspPath);
-
-    // Check that the model has 1 input and 1 output channel
-    if (model->NumInputChannels() != 1)
-    {
-      throw std::runtime_error("Model must have 1 input channel, but has " + std::to_string(model->NumInputChannels()));
-    }
-    if (model->NumOutputChannels() != 1)
-    {
-      throw std::runtime_error("Model must have 1 output channel, but has "
-                               + std::to_string(model->NumOutputChannels()));
-    }
-
-    std::unique_ptr<ResamplingNAM> temp = std::make_unique<ResamplingNAM>(std::move(model), GetSampleRate());
-    temp->Reset(GetSampleRate(), GetBlockSize());
-    if (nam::SlimmableModel* slimmable = temp->GetSlimmableModel())
-    {
-      slimmable->SetSlimmableSize(GetParam(kSlim)->Value());
-    }
-    mStagedModel = std::move(temp);
-    mNAMPath = modelPath;
-    SendControlMsgFromDelegate(kCtrlTagModelFileBrowser, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
-    SendControlMsgFromDelegate(kCtrlTagLibrarySidebar, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
-    SendControlMsgFromDelegate(kCtrlTagModelThumbnail, kMsgTagLoadedModel, mNAMPath.GetLength(), mNAMPath.Get());
-  }
-  catch (std::runtime_error& e)
-  {
-    SendControlMsgFromDelegate(kCtrlTagModelFileBrowser, kMsgTagLoadFailed);
-
-    if (mStagedModel != nullptr)
-    {
-      mStagedModel = nullptr;
-    }
-    mNAMPath = previousNAMPath;
-    std::cerr << "Failed to read DSP module" << std::endl;
-    std::cerr << e.what() << std::endl;
-    return e.what();
-  }
-  return "";
-}
-
-dsp::wav::LoadReturnCode NeuralAmpModeler::_StageIR(const WDL_String& irPath)
-{
-  // FIXME it'd be better for the path to be "staged" as well. Just in case the
-  // path and the model got caught on opposite sides of the fence...
-  WDL_String previousIRPath = mIRPath;
-  const double sampleRate = GetSampleRate();
-  dsp::wav::LoadReturnCode wavState = dsp::wav::LoadReturnCode::ERROR_OTHER;
-  try
-  {
-    auto irPathU8 = std::filesystem::u8path(irPath.Get());
-    mStagedIR = std::make_unique<dsp::ImpulseResponse>(irPathU8.string().c_str(), sampleRate);
-    wavState = mStagedIR->GetWavState();
-  }
-  catch (std::runtime_error& e)
-  {
-    wavState = dsp::wav::LoadReturnCode::ERROR_OTHER;
-    std::cerr << "Caught unhandled exception while attempting to load IR:" << std::endl;
-    std::cerr << e.what() << std::endl;
-  }
-
-  if (wavState == dsp::wav::LoadReturnCode::SUCCESS)
-  {
-    mIRPath = irPath;
-    SendControlMsgFromDelegate(kCtrlTagIRFileBrowser, kMsgTagLoadedIR, mIRPath.GetLength(), mIRPath.Get());
-    SendControlMsgFromDelegate(kCtrlTagLibrarySidebar, kMsgTagLoadedIR, mIRPath.GetLength(), mIRPath.Get());
-  }
-  else
-  {
-    if (mStagedIR != nullptr)
-    {
-      mStagedIR = nullptr;
-    }
-    mIRPath = previousIRPath;
-    SendControlMsgFromDelegate(kCtrlTagIRFileBrowser, kMsgTagLoadFailed);
-  }
-
-  return wavState;
 }
 
 size_t NeuralAmpModeler::_GetBufferNumChannels() const

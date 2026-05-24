@@ -66,11 +66,11 @@ void NeuralAmpModeler::_UnserializeApplyConfig(nlohmann::json& config)
 
   if (mNAMPath.GetLength())
   {
-    _StageModel(mNAMPath);
+    LoadNAMFile(mNAMPath);
   }
   if (mIRPath.GetLength())
   {
-    _StageIR(mIRPath);
+    LoadIRFile(mIRPath);
   }
 }
 

@@ -76,6 +76,8 @@
 #define PD_ICON_POWER_FN "pd/icon-power.svg"
 #define PD_EXAMPLE_AMP_FN "pd/example-amp.jpg"
 #define PD_EXAMPLE_CAB_FN "pd/example-cab.jpg"
+#define PD_NO_AMP_FN "pd/no-amp.jpg"
+#define PD_NO_CAB_FN "pd/no-cab.jpg"
 #define PD_CHEVRON_LEFT_FN "pd/chevron-left.svg"
 #define PD_CHEVRON_RIGHT_FN "pd/chevron-right.svg"
 #define PD_FONT_MEDIUM_FN "pd/medium.ttf"

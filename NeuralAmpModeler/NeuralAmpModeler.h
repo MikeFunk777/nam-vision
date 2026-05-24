@@ -14,6 +14,8 @@
 #include "IPlug_include_in_plug_hdr.h"
 #include "ISender.h"
 
+#include <future>
+#include <mutex>
 
 const int kNumPresets = 1;
 // The plugin is mono inside
@@ -68,6 +70,11 @@ enum ECtrlTags
   kCtrlTagLibrarySidebar,
   kCtrlTagLibraryDrawerButton,
   kCtrlTagModelThumbnail,
+  kCtrlTagMainArea,
+  kCtrlTagSelectorArea,
+  kCtrlTagAmpSelectorScreen,
+  kCtrlTagCabSelectorScreen,
+  kCtrlTagHeaderLoadingBar,
   kNumCtrlTags
 };
 
@@ -219,6 +226,8 @@ public:
   const WDL_String& GetIRRootDirectory() const { return mIRRootDirectory; }
   void SetNAMRootDirectory(const WDL_String& directory);
   void SetIRRootDirectory(const WDL_String& directory);
+  void LoadNAMFile(const WDL_String& modelPath);
+  void LoadIRFile(const WDL_String& irPath);
 
 private:
   // Allocates mInputPointers and mOutputPointers
@@ -236,14 +245,6 @@ private:
   size_t _GetBufferNumChannels() const;
   size_t _GetBufferNumFrames() const;
   void _InitToneStack();
-  // Loads a NAM model and stores it to mStagedNAM
-  // Returns an empty string on success, or an error message on failure.
-  std::string _StageModel(const WDL_String& dspFile);
-  // Loads an IR and stores it to mStagedIR.
-  // Return status code so that error messages can be relayed if
-  // it wasn't successful.
-  dsp::wav::LoadReturnCode _StageIR(const WDL_String& irPath);
-
   bool _HaveModel() const { return this->mModel != nullptr; };
   // Prepare the input & output buffers
   void _PrepareBuffers(const size_t numChannels, const size_t numFrames);
@@ -260,10 +261,15 @@ private:
                       const size_t nChansOut);
   // Resetting for models and IRs, called by OnReset
   void _ResetModelAndIR(const double sampleRate, const int maxBlockSize);
+  void _SendControlMsgIfAttached(int ctrlTag, int msgTag, int dataSize = 0, const void* pData = nullptr);
 
   void _SetInputGain();
   void _SetOutputGain();
   void _ApplySlimParamToLoadedNAMs();
+  void _ProcessAsyncLoadCompletions();
+  void _CollectFinishedLoadTasks();
+  void _SendLoadedModelMessages();
+  void _SendLoadedIRMessages();
 
   // See: Unserialization.cpp
   void _UnserializeApplyConfig(nlohmann::json& config);
@@ -312,6 +318,7 @@ private:
   // Manages switching what DSP is being used.
   std::unique_ptr<ResamplingNAM> mStagedModel;
   std::unique_ptr<dsp::ImpulseResponse> mStagedIR;
+  std::mutex mStagingMutex;
   // Flags to take away the modules at a safe time.
   std::atomic<bool> mShouldRemoveModel = false;
   std::atomic<bool> mShouldRemoveIR = false;
@@ -341,6 +348,24 @@ private:
   WDL_String mHighLightColor{PluginColors::NAM_THEMECOLOR.ToColorCode()};
 
   std::unordered_map<std::string, double> mNAMParams = {{"Input", 0.0}, {"Output", 0.0}};
+
+  std::mutex mAsyncLoadMutex;
+  std::vector<std::future<void>> mLoadTasks;
+  std::atomic<uint64_t> mModelLoadRequestId = 0;
+  std::atomic<uint64_t> mIRLoadRequestId = 0;
+  std::atomic<bool> mModelLoadInProgress = false;
+  std::atomic<bool> mIRLoadInProgress = false;
+  std::atomic<bool> mShuttingDown = false;
+  uint64_t mPendingModelRequestId = 0;
+  std::string mPendingModelPath;
+  std::string mPendingModelError;
+  std::unique_ptr<ResamplingNAM> mPendingModel;
+  bool mPendingModelLoadComplete = false;
+  uint64_t mPendingIRRequestId = 0;
+  std::string mPendingIRPath;
+  dsp::wav::LoadReturnCode mPendingIRState = dsp::wav::LoadReturnCode::ERROR_OTHER;
+  std::unique_ptr<dsp::ImpulseResponse> mPendingIR;
+  bool mPendingIRLoadComplete = false;
 
   NAMSender mInputSender, mOutputSender;
 };
