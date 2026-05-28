@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "91236D761B08F59300734C5E"
-               BuildableName = "pedaldivision-namAppExtension.appex"
+               BuildableName = "namdivisionAppExtension.appex"
                BlueprintName = "AUv3"
                ReferencedContainer = "container:NeuralAmpModeler-iOS.xcodeproj">
             </BuildableReference>
@@ -30,7 +30,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "91236D0C1B08F42B00734C5E"
-               BuildableName = "pedaldivision-nam.app"
+               BuildableName = "namdivision.app"
                BlueprintName = "App"
                ReferencedContainer = "container:NeuralAmpModeler-iOS.xcodeproj">
             </BuildableReference>
@@ -46,7 +46,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "91236D761B08F59300734C5E"
-            BuildableName = "pedaldivision-namAppExtension.appex"
+            BuildableName = "namdivisionAppExtension.appex"
             BlueprintName = "AUv3"
             ReferencedContainer = "container:NeuralAmpModeler-iOS.xcodeproj">
          </BuildableReference>
@@ -75,7 +75,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "91236D0C1B08F42B00734C5E"
-            BuildableName = "pedaldivision-nam.app"
+            BuildableName = "namdivision.app"
             BlueprintName = "App"
             ReferencedContainer = "container:NeuralAmpModeler-iOS.xcodeproj">
          </BuildableReference>
@@ -94,7 +94,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "91236D0C1B08F42B00734C5E"
-            BuildableName = "pedaldivision-nam.app"
+            BuildableName = "namdivision.app"
             BlueprintName = "App"
             ReferencedContainer = "container:NeuralAmpModeler-iOS.xcodeproj">
          </BuildableReference>

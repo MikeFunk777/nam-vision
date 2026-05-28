@@ -5,26 +5,18 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>English</string>
 	<key>CFBundleExecutable</key>
-	<string>pedaldivision-nam</string>
-	<key>CFBundleGetInfoString</key>
-	<string>pedaldivision-nam v0.7.15 Copyright 2026 Pedal Division</string>
+	<string>NeuralAmpModelerAU</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.PedalDivision.vst3.pedaldivision-nam</string>
+	<string>com.PedalDivision.app.namdivision.AUv3Framework</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>pedaldivision-nam</string>
+	<string>NeuralAmpModelerAU</string>
 	<key>CFBundlePackageType</key>
-	<string>BNDL</string>
+	<string>FMWK</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.7.15</string>
-	<key>CFBundleSignature</key>
-	<string>1YEo</string>
+	<string>1.0.0</string>
 	<key>CFBundleVersion</key>
-	<string>0.7.15</string>
-	<key>CSResourcesFileMapped</key>
-	<true/>
-	<key>LSMinimumSystemVersion</key>
-	<string>10.15.0</string>
+	<string>1.0.0</string>
 </dict>
 </plist>

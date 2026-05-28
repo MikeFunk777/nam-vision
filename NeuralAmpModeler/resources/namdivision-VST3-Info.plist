@@ -5,36 +5,26 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>English</string>
 	<key>CFBundleExecutable</key>
-	<string>pedaldivision-nam</string>
+	<string>namdivision</string>
 	<key>CFBundleGetInfoString</key>
-	<string>pedaldivision-nam v0.7.15 Copyright 2026 Pedal Division</string>
-	<key>CFBundleIconFile</key>
-	<string>pedaldivision-nam.icns</string>
+	<string>namdivision v0.7.15 Copyright 2026 Pedal Division</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.PedalDivision.app.pedaldivision-nam</string>
+	<string>com.PedalDivision.vst3.namdivision</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>pedaldivision-nam</string>
+	<string>namdivision</string>
 	<key>CFBundlePackageType</key>
 	<string>BNDL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>0.7.15</string>
 	<key>CFBundleSignature</key>
-	<string>1YEo</string>
+	<string>NMDv</string>
 	<key>CFBundleVersion</key>
 	<string>0.7.15</string>
 	<key>CSResourcesFileMapped</key>
 	<true/>
-	<key>LSApplicationCategoryType</key>
-	<string>public.app-category.music</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>10.15.0</string>
-	<key>NSMainNibFile</key>
-	<string>pedaldivision-nam-macOS-MainMenu</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>This app needs mic access to process audio.</string>
-	<key>NSPrincipalClass</key>
-	<string>SWELLApplication</string>
 </dict>
 </plist>

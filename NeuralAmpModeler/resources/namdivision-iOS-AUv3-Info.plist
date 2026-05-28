@@ -3,47 +3,48 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>English</string>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>namdivisionAppExtension</string>
 	<key>CFBundleExecutable</key>
-	<string>pedaldivision-nam</string>
-	<key>CFBundleGetInfoString</key>
-	<string>pedaldivision-nam v0.7.15 Copyright 2026 Pedal Division</string>
+	<string>namdivisionAppExtension</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.PedalDivision.app.pedaldivision-nam.AUv3</string>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>pedaldivision-nam</string>
+	<string>namdivisionAppExtension</string>
 	<key>CFBundlePackageType</key>
 	<string>XPC!</string>
 	<key>CFBundleShortVersionString</key>
 	<string>0.7.15</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>0.7.15</string>
-	<key>LSMinimumSystemVersion</key>
-	<string>10.12.0</string>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionAttributes</key>
 		<dict>
-			<key>AudioComponentBundle</key>
-			<string>com.PedalDivision.app.pedaldivision-nam.AUv3Framework</string>
 			<key>AudioComponents</key>
 			<array>
 				<dict>
 					<key>description</key>
-					<string>Pedal Division NAM</string>
+					<string>NAM Division</string>
+					<key>factoryFunction</key>
+					<string>IPlugAUViewController_vNeuralAmpModeler</string>
 					<key>manufacturer</key>
-					<string>SDAa</string>
+					<string>NDiv</string>
 					<key>name</key>
-					<string>Pedal Division: Pedal Division NAM</string>
+					<string>Pedal Division: NAM Division</string>
 					<key>sandboxSafe</key>
 					<true/>
 					<key>subtype</key>
-					<string>1YEo</string>
+					<string>NMDv</string>
 					<key>tags</key>
 					<array>
 						<string>Effects</string>
+						<string>size:{820,562}</string>
 					</array>
 					<key>type</key>
 					<string>aufx</string>
@@ -52,10 +53,10 @@
 				</dict>
 			</array>
 		</dict>
+		<key>NSExtensionMainStoryboard</key>
+		<string>namdivision-iOS-MainInterface</string>
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.AudioUnit-UI</string>
-		<key>NSExtensionPrincipalClass</key>
-		<string>IPlugAUViewController_vNeuralAmpModeler</string>
 	</dict>
 </dict>
 </plist>

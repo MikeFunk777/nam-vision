@@ -5,32 +5,36 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>English</string>
 	<key>CFBundleExecutable</key>
-	<string>pedaldivision-nam</string>
+	<string>namdivision</string>
 	<key>CFBundleGetInfoString</key>
-	<string>pedaldivision-nam v0.7.15 Copyright 2026 Pedal Division</string>
+	<string>namdivision v0.7.15 Copyright 2026 Pedal Division</string>
+	<key>CFBundleIconFile</key>
+	<string>namdivision.icns</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.PedalDivision.aax.pedaldivision-nam</string>
+	<string>com.PedalDivision.app.namdivision</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>pedaldivision-nam</string>
+	<string>namdivision</string>
 	<key>CFBundlePackageType</key>
-	<string>TDMw</string>
+	<string>BNDL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>0.7.15</string>
 	<key>CFBundleSignature</key>
-	<string>PTul</string>
+	<string>NMDv</string>
 	<key>CFBundleVersion</key>
 	<string>0.7.15</string>
 	<key>CSResourcesFileMapped</key>
 	<true/>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.music</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>10.15.0</string>
-	<key>LSMultipleInstancesProhibited</key>
-	<string>true</string>
-	<key>LSPrefersCarbon</key>
-	<false/>
-	<key>NSAppleScriptEnabled</key>
-	<string>No</string>
+	<key>NSMainNibFile</key>
+	<string>namdivision-macOS-MainMenu</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs mic access to process audio.</string>
+	<key>NSPrincipalClass</key>
+	<string>SWELLApplication</string>
 </dict>
 </plist>

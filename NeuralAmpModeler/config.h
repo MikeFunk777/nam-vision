@@ -1,18 +1,18 @@
-#define PLUG_NAME "Pedal Division NAM"
+#define PLUG_NAME "NAM Division"
 #define PLUG_MFR "Pedal Division"
 #define PLUG_VERSION_HEX 0x0000070f
 #define PLUG_VERSION_STR "0.7.15"
-#define PLUG_UNIQUE_ID '1YEo'
-#define PLUG_MFR_ID 'SDAa'
+#define PLUG_UNIQUE_ID 'NMDv'
+#define PLUG_MFR_ID 'NDiv'
 #define PLUG_URL_STR "https://pedaldivision.com"
 #define PLUG_EMAIL_STR "spam@me.com"
 #define PLUG_COPYRIGHT_STR "Copyright 2026 Pedal Division"
 #define PLUG_CLASS_NAME NeuralAmpModeler
-#define BUNDLE_NAME "pedaldivision-nam"
+#define BUNDLE_NAME "namdivision"
 #define BUNDLE_MFR "PedalDivision"
 #define BUNDLE_DOMAIN "com"
 
-#define SHARED_RESOURCES_SUBPATH "pedaldivision-nam"
+#define SHARED_RESOURCES_SUBPATH "namdivision"
 
 #ifdef APP_API
   #define PLUG_CHANNEL_IO "1-2"
@@ -41,10 +41,10 @@
 #define AUV2_VIEW_CLASS NeuralAmpModeler_View
 #define AUV2_VIEW_CLASS_STR "NeuralAmpModeler_View"
 
-#define AAX_TYPE_IDS 'ITP1'
-#define AAX_TYPE_IDS_AUDIOSUITE 'ITA1'
+#define AAX_TYPE_IDS 'NDv1'
+#define AAX_TYPE_IDS_AUDIOSUITE 'NDvA'
 #define AAX_PLUG_MFR_STR "Pedal Division"
-#define AAX_PLUG_NAME_STR "Pedal Division NAM\nIPEF"
+#define AAX_PLUG_NAME_STR "NAM Division\nIPEF"
 #define AAX_PLUG_CATEGORY_STR "Effect"
 #define AAX_DOES_AUDIOSUITE 1
 
@@ -78,6 +78,7 @@
 #define PD_EXAMPLE_CAB_FN "pd/example-cab.jpg"
 #define PD_NO_AMP_FN "pd/no-amp.jpg"
 #define PD_NO_CAB_FN "pd/no-cab.jpg"
+#define PD_NO_SELECTION_FN "pd/no-selection.jpg"
 #define PD_CHEVRON_LEFT_FN "pd/chevron-left.svg"
 #define PD_CHEVRON_RIGHT_FN "pd/chevron-right.svg"
 #define PD_FONT_MEDIUM_FN "pd/medium.ttf"

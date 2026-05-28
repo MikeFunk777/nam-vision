@@ -2,11 +2,11 @@
 <PageTables vers='6.4.0.89'>
 	<PageTableLayouts>
 		<Plugin manID='PDiv' prodID='Ipef' plugID='DGDR'>
-			<Desc>Pedal Division NAM 1 -&gt; 1 by Pedal Division.</Desc>
+			<Desc>NAM Division 1 -&gt; 1 by Pedal Division.</Desc>
 			<Layout>StandardLayout</Layout>
 		</Plugin><!--manID='PDiv' prodID='Ipef' plugID='DGDR'-->
 		<Plugin manID='PDiv' prodID='Ipef' plugID='DGDT'>
-			<Desc>Pedal Division NAM 1 -&gt; 1 by Pedal Division.</Desc>
+			<Desc>NAM Division 1 -&gt; 1 by Pedal Division.</Desc>
 			<Layout>StandardLayout</Layout>
 		</Plugin><!--manID='PDiv' prodID='Ipef' plugID='DGDT'-->
 		<PTLayout name='StandardLayout'>
@@ -280,7 +280,7 @@
 		<PluginList>
 			<RTAS>
 				<PluginID manID='PDiv' prodID='Ipef' plugID='DGDR'>
-					<MenuStr>AAX Native: Pedal Division NAM, 1 in X 1 out</MenuStr>
+					<MenuStr>AAX Native: NAM Division, 1 in X 1 out</MenuStr>
 				</PluginID><!--manID='PDiv' prodID='Ipef' plugID='DGDR'-->
 			</RTAS>
 		</PluginList>

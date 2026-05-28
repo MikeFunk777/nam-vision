@@ -280,6 +280,7 @@ private:
 
   // Update all controls that depend on a model
   void _UpdateControlsFromModel();
+  void _UpdateSettingsModelSampleRate(double sampleRate);
 
   void _RefreshLibrarySidebar();
   void _LoadLibrarySettings();

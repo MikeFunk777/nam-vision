@@ -6,17 +6,17 @@
 	<array>
 		<dict>
 			<key>description</key>
-			<string>Pedal Division NAM</string>
+			<string>NAM Division</string>
 			<key>factoryFunction</key>
 			<string>NeuralAmpModeler_Factory</string>
 			<key>manufacturer</key>
-			<string>SDAa</string>
+			<string>NDiv</string>
 			<key>name</key>
-			<string>Pedal Division: Pedal Division NAM</string>
+			<string>Pedal Division: NAM Division</string>
 			<key>sandboxSafe</key>
 			<true/>
 			<key>subtype</key>
-			<string>1YEo</string>
+			<string>NMDv</string>
 			<key>type</key>
 			<string>aufx</string>
 			<key>version</key>
@@ -28,21 +28,21 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>English</string>
 	<key>CFBundleExecutable</key>
-	<string>pedaldivision-nam</string>
+	<string>namdivision</string>
 	<key>CFBundleGetInfoString</key>
-	<string>pedaldivision-nam v0.7.15 Copyright 2026 Pedal Division</string>
+	<string>namdivision v0.7.15 Copyright 2026 Pedal Division</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.PedalDivision.audiounit.pedaldivision-nam</string>
+	<string>com.PedalDivision.audiounit.namdivision</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>pedaldivision-nam</string>
+	<string>namdivision</string>
 	<key>CFBundlePackageType</key>
 	<string>BNDL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>0.7.15</string>
 	<key>CFBundleSignature</key>
-	<string>1YEo</string>
+	<string>NMDv</string>
 	<key>CFBundleVersion</key>
 	<string>0.7.15</string>
 	<key>CSResourcesFileMapped</key>
