@@ -26,8 +26,9 @@ if [ "$VERSION" == "" ]; then
   exit 1
 fi
 
-PRODUCT_NAME=NeuralAmpModeler
-PKG_ID_PREFIX="${INSTALLER_PKG_ID_PREFIX:-com.StevenAtkinson}"
+PRODUCT_NAME="${PRODUCT_NAME:-namdivision}"
+INSTALLER_DISPLAY_NAME="${INSTALLER_DISPLAY_NAME:-$PRODUCT_NAME}"
+PKG_ID_PREFIX="${INSTALLER_PKG_ID_PREFIX:-com.pedaldivision}"
 
 # locations
 PRODUCTS="build-mac"
@@ -35,11 +36,9 @@ PRODUCTS="build-mac"
 VST3="${PRODUCT_NAME}.vst3"
 AU="${PRODUCT_NAME}.component"
 APP="${PRODUCT_NAME}.app"
-AAX="${PRODUCT_NAME}.aaxplugin"
 
 VST3_PKG_ID="${PKG_ID_PREFIX}.vst3.pkg.${PRODUCT_NAME}"
 AU_PKG_ID="${PKG_ID_PREFIX}.au.pkg.${PRODUCT_NAME}"
-AAX_PKG_ID="${PKG_ID_PREFIX}.aax.pkg.${PRODUCT_NAME}"
 APP_PKG_ID="${PKG_ID_PREFIX}.app.pkg.${PRODUCT_NAME}"
 RES_PKG_ID="${PKG_ID_PREFIX}.resources.pkg.${PRODUCT_NAME}"
 
@@ -47,6 +46,11 @@ RSRCS="~/Music/${PRODUCT_NAME}/Resources"
 
 OUTPUT_BASE_FILENAME="${PRODUCT_NAME} Installer.pkg"
 THIRD_PARTY_NOTICES="./installer/ThirdPartyNotices.txt"
+BACKGROUND_FILE="${INSTALLER_BACKGROUND_FILE:-${PRODUCT_NAME}-installer-bg.png}"
+
+if [[ ! -f "./installer/${BACKGROUND_FILE}" && -f "./installer/NeuralAmpModeler-installer-bg.png" ]]; then
+  BACKGROUND_FILE="NeuralAmpModeler-installer-bg.png"
+fi
 
 TARGET_DIR="./build-mac/installer"
 PKG_DIR=${TARGET_DIR}/pkgs
@@ -69,8 +73,8 @@ build_flavor()
 
   echo --- BUILDING ${PRODUCT_NAME}_${flavor}.pkg ---
 
-  mkdir -p $TMPDIR
-  cp -R -L $PRODUCTS/$flavorprod $TMPDIR
+  mkdir -p "$TMPDIR"
+  cp -R -L "$PRODUCTS/$flavorprod" "$TMPDIR"
 
   case "$flavor" in
     VST3|AU|APP)
@@ -96,9 +100,9 @@ build_flavor()
       ;;
   esac
 
-  pkgbuild --root $TMPDIR --identifier $ident --version $VERSION --install-location $loc ${PKG_DIR}/${PRODUCT_NAME}_${flavor}.pkg #|| exit 1
+  pkgbuild --root "$TMPDIR" --identifier "$ident" --version "$VERSION" --install-location "$loc" "${PKG_DIR}/${PRODUCT_NAME}_${flavor}.pkg" || exit 1
 
-  rm -r $TMPDIR
+  rm -r "$TMPDIR"
 }
 
 # # try to build VST3 package
@@ -109,11 +113,6 @@ fi
 # # try to build AU package
 if [[ -d $PRODUCTS/$AU ]]; then
   build_flavor "AU" $AU "$AU_PKG_ID" "/Library/Audio/Plug-Ins/Components"
-fi
-
-# # try to build AAX package
-if [[ -d $PRODUCTS/$AAX ]]; then
-  build_flavor "AAX" $AAX "$AAX_PKG_ID" ""/Library/Application Support/Avid/Audio/Plug-Ins""
 fi
 
 # try to build App package
@@ -147,11 +146,6 @@ if [[ -d $PRODUCTS/$AU ]]; then
 	AU_CHOICE="<line choice=\"${AU_PKG_ID}\"/>"
 	AU_CHOICE_DEF="<choice id=\"${AU_PKG_ID}\" visible=\"true\" start_selected=\"true\" title=\"Audio Unit (v2) Plug-in\"><pkg-ref id=\"${AU_PKG_ID}\"/></choice><pkg-ref id=\"${AU_PKG_ID}\" version=\"${VERSION}\" onConclusion=\"none\">${PRODUCT_NAME}_AU.pkg</pkg-ref>"
 fi
-if [[ -d $PRODUCTS/$AAX ]]; then
-	AAX_PKG_REF="<pkg-ref id=\"${AAX_PKG_ID}\"/>"
-	AAX_CHOICE="<line choice=\"${AAX_PKG_ID}\"/>"
-	AAX_CHOICE_DEF="<choice id=\"${AAX_PKG_ID}\" visible=\"true\" start_selected=\"true\" title=\"AAX Plug-in\"><pkg-ref id=\"${AAX_PKG_ID}\"/></choice><pkg-ref id=\"${AAX_PKG_ID}\" version=\"${VERSION}\" onConclusion=\"none\">${PRODUCT_NAME}_AAX.pkg</pkg-ref>"
-fi
 if [[ -d $PRODUCTS/$APP ]]; then
 	APP_PKG_REF="<pkg-ref id=\"${APP_PKG_ID}\"/>"
 	APP_CHOICE="<line choice=\"${APP_PKG_ID}\"/>"
@@ -167,27 +161,24 @@ fi
 cat > ${TARGET_DIR}/distribution.xml << XMLEND
 <?xml version="1.0" encoding="utf-8"?>
 <installer-gui-script minSpecVersion="1">
-    <title>${PRODUCT_NAME} ${VERSION}</title>
+    <title>${INSTALLER_DISPLAY_NAME} ${VERSION}</title>
     <license file="license.rtf" mime-type="application/rtf"/>
     <readme file="readme-mac.rtf" mime-type="application/rtf"/>
     <welcome file="intro.rtf" mime-type="application/rtf"/>
-    <background file="${PRODUCT_NAME}-installer-bg.png" alignment="topleft" scaling="none"/>
+    <background file="${BACKGROUND_FILE}" alignment="topleft" scaling="none"/>
     ${VST3_PKG_REF}
     ${AU_PKG_REF}
-    ${AAX_PKG_REF}
     ${APP_PKG_REF}
     ${RES_PKG_REF}
     <options require-scripts="false" customize="always" hostArchitectures="arm64,x86_64"/>
     <choices-outline>
         ${VST3_CHOICE}
         ${AU_CHOICE}
-        ${AAX_CHOICE}
         ${APP_CHOICE}
         ${RES_CHOICE}
     </choices-outline>
     ${VST3_CHOICE_DEF}
     ${AU_CHOICE_DEF}
-    ${AAX_CHOICE_DEF}
     ${APP_CHOICE_DEF}
     ${RES_CHOICE_DEF}
 </installer-gui-script>
@@ -197,8 +188,13 @@ XMLEND
 # --resources .
 
 TEMP_RESOURCES=$(mktemp -d)
-cp ./installer/license.rtf ${TEMP_RESOURCES}
-productbuild --resources ${TEMP_RESOURCES} --distribution ${TARGET_DIR}/distribution.xml --package-path ${PKG_DIR} "${TARGET_DIR}/$OUTPUT_BASE_FILENAME"
+cp ./installer/license.rtf "${TEMP_RESOURCES}"
+cp ./installer/readme-mac.rtf "${TEMP_RESOURCES}"
+cp ./installer/intro.rtf "${TEMP_RESOURCES}"
+if [[ -f "./installer/${BACKGROUND_FILE}" ]]; then
+  cp "./installer/${BACKGROUND_FILE}" "${TEMP_RESOURCES}"
+fi
+productbuild --resources "${TEMP_RESOURCES}" --distribution "${TARGET_DIR}/distribution.xml" --package-path "${PKG_DIR}" "${TARGET_DIR}/$OUTPUT_BASE_FILENAME" || exit 1
 
-rm ${TARGET_DIR}/distribution.xml
-rm -r $PKG_DIR
+rm "${TARGET_DIR}/distribution.xml"
+rm -r "$PKG_DIR"

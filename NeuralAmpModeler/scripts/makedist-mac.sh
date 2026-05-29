@@ -1,14 +1,17 @@
-#! /bin/sh
+#!/bin/bash
 
 # this script requires xcpretty https://github.com/xcpretty/xcpretty
+set -o pipefail
 
 BASEDIR=$(dirname $0)
 
 cd $BASEDIR/..
 
 if [ -d build-mac ]; then
-  sudo rm -f -R build-mac
+  rm -f -R build-mac
 fi
+
+mkdir -p build-mac
 
 #---------------------------------------------------------------------------------------------------------
 #variables
@@ -17,18 +20,17 @@ IPLUG2_ROOT=../iPlug2
 XCCONFIG=$IPLUG2_ROOT/../common-mac.xcconfig
 SCRIPTS=$IPLUG2_ROOT/Scripts
 
+if [ -z "$DEVELOPER_DIR" ] && [ -d "/Applications/Xcode.app/Contents/Developer" ]; then
+  export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+fi
+
 # CODESIGN disabled by default. 
 CODESIGN=0
 
 # macOS codesigning/notarization
-INSTALLER_PKG_ID_PREFIX=${INSTALLER_PKG_ID_PREFIX:-com.StevenAtkinson}
+INSTALLER_PKG_ID_PREFIX=${INSTALLER_PKG_ID_PREFIX:-com.pedaldivision}
 APP_SPECIFIC_ID=${APP_SPECIFIC_ID:-TODO}
 APP_SPECIFIC_PWD=${APP_SPECIFIC_PWD:-TODO}
-
-# AAX/PACE wraptool codesigning
-ILOK_ID=${ILOK_ID:-TODO}
-ILOK_PWD=${ILOK_PWD:-TODO}
-WRAP_GUID=${WRAP_GUID:-TODO}
 
 DEMO=0
 if [ "$1" == "demo" ]; then
@@ -40,7 +42,9 @@ if [ "$2" == "zip" ]; then
   BUILD_INSTALLER=0
 fi
 
-VERSION=`echo | grep PLUG_VERSION_HEX config.h`
+REQUIRE_ALL_FORMATS=${REQUIRE_ALL_FORMATS:-1}
+
+VERSION=`echo | grep "^#define PLUG_VERSION_HEX " config.h`
 VERSION=${VERSION//\#define PLUG_VERSION_HEX }
 VERSION=${VERSION//\'}
 MAJOR_VERSION=$(($VERSION & 0xFFFF0000))
@@ -51,9 +55,17 @@ BUG_FIX=$(($VERSION & 0x000000FF))
 
 FULL_VERSION=$MAJOR_VERSION"."$MINOR_VERSION"."$BUG_FIX
 
-PLUGIN_NAME=`echo | grep BUNDLE_NAME config.h`
+PLUGIN_NAME=`echo | grep "^#define BUNDLE_NAME " config.h`
 PLUGIN_NAME=${PLUGIN_NAME//\#define BUNDLE_NAME }
 PLUGIN_NAME=${PLUGIN_NAME//\"}
+
+DISPLAY_NAME=`echo | grep "^#define PLUG_NAME " config.h`
+DISPLAY_NAME=${DISPLAY_NAME//\#define PLUG_NAME }
+DISPLAY_NAME=${DISPLAY_NAME//\"}
+
+PROJECT_NAME=${PROJECT_NAME:-$(basename "$PWD")}
+PROJECT_FILE=${PROJECT_FILE:-./projects/$PROJECT_NAME-macOS.xcodeproj}
+PROJECT_XCCONFIG=${PROJECT_XCCONFIG:-./config/$PROJECT_NAME-mac.xcconfig}
 
 NOTARIZE_BUNDLE_ID=${NOTARIZE_BUNDLE_ID:-${INSTALLER_PKG_ID_PREFIX}.${PLUGIN_NAME}}
 NOTARIZE_BUNDLE_ID_DEMO=${NOTARIZE_BUNDLE_ID_DEMO:-${INSTALLER_PKG_ID_PREFIX}.${PLUGIN_NAME}.DEMO}
@@ -71,6 +83,29 @@ copy_third_party_notices()
   fi
 }
 
+stage_for_installer()
+{
+  rm -f -R "build-mac/$PLUGIN_NAME.app" "build-mac/$PLUGIN_NAME.component" "build-mac/$PLUGIN_NAME.vst3"
+
+  if [ -d "$APP" ]; then
+    cp -R "$APP" "build-mac/$PLUGIN_NAME.app"
+  fi
+
+  if [ -d "$AU" ]; then
+    cp -R "$AU" "build-mac/$PLUGIN_NAME.component"
+  fi
+
+  if [ -d "$VST3" ]; then
+    cp -R "$VST3" "build-mac/$PLUGIN_NAME.vst3"
+  fi
+
+}
+
+VST3_SDK_READY=0
+if [ -f "$IPLUG2_ROOT/Dependencies/IPlug/VST3_SDK/public.sdk/source/vst/vstrepresentation.cpp" ]; then
+  VST3_SDK_READY=1
+fi
+
 if [ $DEMO == 1 ]; then
   ARCHIVE_NAME=$ARCHIVE_NAME-demo
 fi
@@ -82,19 +117,14 @@ fi
 #   ARCHIVE_NAME=`python3 ${SCRIPTS}/get_archive_name.py ${PLUGIN_NAME} mac full`
 # fi
 
-VST3=`echo | grep VST3_PATH $XCCONFIG`
-VST3=$HOME${VST3//\VST3_PATH = \$(HOME)}/$PLUGIN_NAME.vst3
+STAGE_ROOT="$PWD/build-mac/stage"
+APP_STAGE_PATH="$STAGE_ROOT/app"
+AU_STAGE_PATH="$STAGE_ROOT/au"
+VST3_STAGE_PATH="$STAGE_ROOT/vst3"
 
-AU=`echo | grep AU_PATH $XCCONFIG`
-AU=$HOME${AU//\AU_PATH = \$(HOME)}/$PLUGIN_NAME.component
-
-APP=`echo | grep APP_PATH $XCCONFIG`
-APP=$HOME${APP//\APP_PATH = \$(HOME)}/$PLUGIN_NAME.app
-
-# Dev build folder
-AAX=`echo | grep AAX_PATH $XCCONFIG`
-AAX=${AAX//\AAX_PATH = }/$PLUGIN_NAME.aaxplugin
-AAX_FINAL="/Library/Application Support/Avid/Audio/Plug-Ins/$PLUGIN_NAME.aaxplugin"
+VST3="$VST3_STAGE_PATH/$PLUGIN_NAME.vst3"
+AU="$AU_STAGE_PATH/$PLUGIN_NAME.component"
+APP="$APP_STAGE_PATH/$PLUGIN_NAME.app"
 
 PKG="build-mac/installer/$PLUGIN_NAME Installer.pkg"
 PKG_US="build-mac/installer/$PLUGIN_NAME Installer.unsigned.pkg"
@@ -107,13 +137,12 @@ DEV_ID_INST_STR="Developer ID Installer: ${CERT_ID}"
 echo $VST3
 echo $AU
 echo $APP
-echo $AAX
 
 if [ $DEMO == 1 ]; then
- echo "making $PLUGIN_NAME version $FULL_VERSION DEMO mac distribution..."
+ echo "making $DISPLAY_NAME ($PLUGIN_NAME) version $FULL_VERSION DEMO mac distribution..."
 #   cp "resources/img/AboutBox_Demo.png" "resources/img/AboutBox.png"
 else
- echo "making $PLUGIN_NAME version $FULL_VERSION mac distribution..."
+ echo "making $DISPLAY_NAME ($PLUGIN_NAME) version $FULL_VERSION mac distribution..."
 #   cp "resources/img/AboutBox_Registered.png" "resources/img/AboutBox.png"
 fi
 
@@ -129,39 +158,74 @@ touch *.cpp
 echo "remove existing binaries"
 echo ""
 
+rm -f -R "$STAGE_ROOT"
+mkdir -p "$APP_STAGE_PATH" "$AU_STAGE_PATH" "$VST3_STAGE_PATH"
+
 if [ -d $APP ]; then
-  sudo rm -f -R -f $APP
+  rm -f -R -f $APP
 fi
 
 if [ -d $AU ]; then
- sudo rm -f -R $AU
+ rm -f -R $AU
 fi
 
 if [ -d $VST3 ]; then
-  sudo rm -f -R $VST3
-fi
-
-if [ -d "${AAX}" ]; then
-  sudo rm -f -R "${AAX}"
-fi
-
-if [ -d "${AAX_FINAL}" ]; then
-  sudo rm -f -R "${AAX_FINAL}"
+  rm -f -R $VST3
 fi
 
 #---------------------------------------------------------------------------------------------------------
-# build xcode project. Change target to build individual formats, or add to All target in the xcode project
+# build xcode project. The distributable formats are only built when their SDKs are available.
 
-xcodebuild -project ./projects/$PLUGIN_NAME-macOS.xcodeproj -xcconfig ./config/$PLUGIN_NAME-mac.xcconfig DEMO_VERSION=$DEMO -target "All" -UseModernBuildSystem=NO -configuration Release | tee build-mac.log | xcpretty #&& exit ${PIPESTATUS[0]}
+BUILD_TARGETS=("APP" "AU")
 
-if [ "${PIPESTATUS[0]}" -ne "0" ]; then
-  echo "ERROR: build failed, aborting"
-  echo ""
-  # cat build-mac.log
-  exit 1
+if [ $VST3_SDK_READY == 1 ]; then
+  BUILD_TARGETS+=("VST3")
 else
-  rm build-mac.log
+  if [ $REQUIRE_ALL_FORMATS == 1 ]; then
+    echo "ERROR: VST3 SDK not found."
+    echo "Install it with:"
+    echo "  cd ../iPlug2/Dependencies/IPlug"
+    echo "  ./download-vst3-sdk.sh"
+    echo ""
+    echo "For a local AU/App-only build, rerun with REQUIRE_ALL_FORMATS=0."
+    exit 1
+  else
+    echo "VST3 SDK not found; skipping VST3 build"
+  fi
 fi
+
+rm -f build-mac.log
+for BUILD_TARGET in "${BUILD_TARGETS[@]}"; do
+  echo "building $BUILD_TARGET"
+  BUILD_DSTROOT="$STAGE_ROOT/$BUILD_TARGET"
+  case "$BUILD_TARGET" in
+    APP)
+      BUILD_DSTROOT="$APP_STAGE_PATH"
+      ;;
+    AU)
+      BUILD_DSTROOT="$AU_STAGE_PATH"
+      ;;
+    VST3)
+      BUILD_DSTROOT="$VST3_STAGE_PATH"
+      ;;
+  esac
+
+  if command -v xcpretty >/dev/null 2>&1; then
+    xcodebuild -project "$PROJECT_FILE" -xcconfig "$PROJECT_XCCONFIG" DEMO_VERSION=$DEMO APP_PATH="$APP_STAGE_PATH" AU_PATH="$AU_STAGE_PATH" VST3_PATH="$VST3_STAGE_PATH" DSTROOT="$BUILD_DSTROOT" -target "$BUILD_TARGET" -UseModernBuildSystem=NO -configuration Release | tee -a build-mac.log | xcpretty
+    BUILD_RESULT=${PIPESTATUS[0]}
+  else
+    echo "xcpretty not found; using raw xcodebuild output"
+    xcodebuild -project "$PROJECT_FILE" -xcconfig "$PROJECT_XCCONFIG" DEMO_VERSION=$DEMO APP_PATH="$APP_STAGE_PATH" AU_PATH="$AU_STAGE_PATH" VST3_PATH="$VST3_STAGE_PATH" DSTROOT="$BUILD_DSTROOT" -target "$BUILD_TARGET" -UseModernBuildSystem=NO -configuration Release | tee -a build-mac.log
+    BUILD_RESULT=${PIPESTATUS[0]}
+  fi
+
+  if [ "$BUILD_RESULT" -ne "0" ]; then
+    echo "ERROR: $BUILD_TARGET build failed, aborting"
+    echo ""
+    exit 1
+  fi
+done
+rm build-mac.log
 
 #---------------------------------------------------------------------------------------------------------
 # set bundle icons - http://www.hamsoftengineering.com/codeSharing/SetFileIcon/SetFileIcon.html
@@ -175,10 +239,6 @@ fi
 
 if [ -d $VST3 ]; then
   ./$SCRIPTS/SetFileIcon -image resources/$PLUGIN_NAME.icns -file $VST3
-fi
-
-if [ -d "${AAX}" ]; then
-  ./$SCRIPTS/SetFileIcon -image resources/$PLUGIN_NAME.icns -file "${AAX}"
 fi
 
 #---------------------------------------------------------------------------------------------------------
@@ -199,10 +259,6 @@ if [ -d $VST3 ]; then
   strip -x $VST3/Contents/MacOS/$PLUGIN_NAME
 fi
 
-if [ -d "${AAX}" ]; then
-  strip -x "${AAX}/Contents/MacOS/$PLUGIN_NAME"
-fi
-
 echo "copying third-party notices"
 echo ""
 
@@ -211,18 +267,6 @@ copy_third_party_notices "$AU"
 copy_third_party_notices "$VST3"
 
 if [ $CODESIGN == 1 ]; then
-  #---------------------------------------------------------------------------------------------------------
-  # code sign AAX binary with wraptool
-
-  # echo "copying AAX ${PLUGIN_NAME} from 3PDev to main AAX folder"
-  # sudo cp -p -R "${AAX}" "${AAX_FINAL}"
-  # mkdir "${AAX_FINAL}/Contents/Factory Presets/"
-  
-  # echo "code sign AAX binary"
-  # /Applications/PACEAntiPiracy/Eden/Fusion/Current/bin/wraptool sign --verbose --account $ILOK_ID --password $ILOK_PWD --wcguid $WRAP_GUID --signid "${DEV_ID_APP_STR}" --in "${AAX_FINAL}" --out "${AAX_FINAL}"
-
-  #---------------------------------------------------------------------------------------------------------
-
   #---------------------------------------------------------------------------------------------------------
   echo "code-sign binaries"
   echo ""
@@ -239,12 +283,13 @@ if [ $BUILD_INSTALLER == 1 ]; then
   #---------------------------------------------------------------------------------------------------------
   # installer
 
-  sudo rm -R -f build-mac/$PLUGIN_NAME-*.dmg
+  rm -R -f build-mac/$PLUGIN_NAME-*.dmg
+  stage_for_installer
 
   echo "building installer"
   echo ""
 
-  ./scripts/makeinstaller-mac.sh $FULL_VERSION
+  PRODUCT_NAME="$PLUGIN_NAME" INSTALLER_DISPLAY_NAME="$DISPLAY_NAME" ./scripts/makeinstaller-mac.sh $FULL_VERSION
 
   if [ $CODESIGN == 1 ]; then
     echo "code-sign installer for Gatekeeper on macOS 10.8+"
@@ -267,11 +312,15 @@ if [ $BUILD_INSTALLER == 1 ]; then
   else
     cp installer/changelog.txt build-mac/installer/
     cp installer/known-issues.txt build-mac/installer/
-    cp "manual/$PLUGIN_NAME manual.pdf" build-mac/installer/
+    if [ -f "manual/$PLUGIN_NAME manual.pdf" ]; then
+      cp "manual/$PLUGIN_NAME manual.pdf" build-mac/installer/
+    elif [ -f "manual/$PROJECT_NAME manual.pdf" ]; then
+      cp "manual/$PROJECT_NAME manual.pdf" build-mac/installer/
+    fi
     hdiutil create build-mac/$ARCHIVE_NAME.dmg -format UDZO -srcfolder build-mac/installer/ -ov -anyowners -volname $PLUGIN_NAME
   fi
 
-  sudo rm -R -f build-mac/installer/
+  rm -R -f build-mac/installer/
 
   if [ $CODESIGN == 1 ]; then
     #---------------------------------------------------------------------------------------------------------
@@ -319,10 +368,6 @@ else
     cp -R $VST3 build-mac/zip/$PLUGIN_NAME.vst3
   fi
 
-  if [ -d "${AAX_FINAL}" ]; then
-    cp -R $AAX_FINAL build-mac/zip/$PLUGIN_NAME.aaxplugin
-  fi
-
   echo "zipping binaries..."
   echo ""
   ditto -c -k build-mac/zip build-mac/$ARCHIVE_NAME.zip
@@ -331,7 +376,7 @@ fi
 
 #---------------------------------------------------------------------------------------------------------
 # dSYMs
-sudo rm -R -f build-mac/*-dSYMs.zip
+rm -R -f build-mac/*-dSYMs.zip
 
 echo "packaging dSYMs"
 echo ""

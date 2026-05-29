@@ -48,9 +48,21 @@ public:
       return;
     }
 
+    if (GetNAMRemoveButtonBounds().Contains(x, y))
+    {
+      ClearLibraryDirectory(LibraryTarget::NAM);
+      return;
+    }
+
     if (GetIRSelectButtonBounds().Contains(x, y))
     {
       PromptForLibraryDirectory(LibraryTarget::IR);
+      return;
+    }
+
+    if (GetIRRemoveButtonBounds().Contains(x, y))
+    {
+      ClearLibraryDirectory(LibraryTarget::IR);
       return;
     }
 
@@ -354,6 +366,25 @@ private:
     return GetSelectButtonBounds(GetIRPathSetterBounds(), GetIRRootDirectory().GetLength() > 0);
   }
 
+  IRECT GetRemoveButtonBounds(const IRECT& selectButtonBounds, bool hasSelectedPath) const
+  {
+    if (!hasSelectedPath)
+      return IRECT();
+
+    const float left = selectButtonBounds.R + kSettingsRemoveButtonGap;
+    return IRECT(left, selectButtonBounds.T, left + kSettingsRemoveButtonWidth, selectButtonBounds.B);
+  }
+
+  IRECT GetNAMRemoveButtonBounds()
+  {
+    return GetRemoveButtonBounds(GetNAMSelectButtonBounds(), GetNAMRootDirectory().GetLength() > 0);
+  }
+
+  IRECT GetIRRemoveButtonBounds()
+  {
+    return GetRemoveButtonBounds(GetIRSelectButtonBounds(), GetIRRootDirectory().GetLength() > 0);
+  }
+
   void DrawPathSettingContainer(IGraphics& g)
   {
     const auto container = GetPathSettingContainerBounds();
@@ -502,6 +533,9 @@ private:
 
     DrawGeneralButton(g, GetSelectButtonBounds(bounds, hasSelectedPath),
                       hasSelectedPath ? "Change folder" : "Select folder");
+    if (hasSelectedPath)
+      DrawTextButton(g, GetRemoveButtonBounds(GetSelectButtonBounds(bounds, hasSelectedPath), hasSelectedPath),
+                     "Remove");
   }
 
   void DrawGeneralButton(IGraphics& g, const IRECT& bounds, const char* label)
@@ -510,6 +544,19 @@ private:
 
     g.DrawRoundRect(kPDForeground, bounds, kSettingsButtonRadius, &mBlend, kSettingsButtonBorderSize);
     g.DrawText(text, label, bounds, &mBlend);
+  }
+
+  void DrawTextButton(IGraphics& g, const IRECT& bounds, const char* label)
+  {
+    const IText text(kSelectorTextSize, kPDForeground, kPDFontMedium, EAlign::Near, EVAlign::Middle);
+    IRECT measured;
+
+    g.DrawText(text, label, bounds, &mBlend);
+    g.MeasureText(text, label, measured);
+
+    const float underlineWidth = std::min(measured.W(), bounds.W());
+    const float underlineY = bounds.MH() + (kSelectorTextSize / 2.f) - 1.f;
+    g.DrawLine(kPDForeground, bounds.L, underlineY, bounds.L + underlineWidth, underlineY, &mBlend, 1.f);
   }
 
   void PromptForLibraryDirectory(LibraryTarget target)
@@ -528,6 +575,19 @@ private:
 
       SetDirty(false);
     });
+  }
+
+  void ClearLibraryDirectory(LibraryTarget target)
+  {
+    WDL_String empty;
+
+    if (target == LibraryTarget::NAM)
+      PLUG()->SetNAMRootDirectory(empty);
+    else
+      PLUG()->SetIRRootDirectory(empty);
+
+    if (auto* ui = GetUI())
+      ui->SetAllControlsDirty();
   }
 
   WDL_String GetNAMRootDirectory() { return PLUG()->GetNAMRootDirectory(); }

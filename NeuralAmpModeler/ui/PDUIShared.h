@@ -23,6 +23,10 @@ constexpr float kAmpImageWidth = 440.f;
 constexpr float kMainAreaSpacerWidth = 32.f;
 constexpr float kCabImageWidth = 220.f;
 constexpr float kOutputMeterWidth = 64.f;
+constexpr float kMainLibraryNoticeWidth = 260.f;
+constexpr float kMainLibraryNoticeTextHeight = 42.f;
+constexpr float kMainLibraryNoticeButtonGap = 12.f;
+constexpr float kMainLibraryNoticeButtonWidth = 88.f;
 constexpr float kSelectorAreaTop = kMainAreaTop + kMainAreaHeight;
 constexpr float kSelectorAreaHeight = 48.f;
 constexpr float kSelectorAreaBorderSize = 2.f;
@@ -67,6 +71,8 @@ constexpr float kSettingsButtonBorderSize = 2.f;
 constexpr float kSettingsButtonHeight = kSelectorTextSize + (2.f * kSettingsButtonPaddingY);
 constexpr float kSettingsButtonLabelWidth = 104.f;
 constexpr float kSettingsButtonWidth = kSettingsButtonLabelWidth + (2.f * kSettingsButtonPaddingX);
+constexpr float kSettingsRemoveButtonGap = 10.f;
+constexpr float kSettingsRemoveButtonWidth = 58.f;
 constexpr float kSettingsPathSetterHeight = (2.f * kSettingsPathSetterPadding) + kSettingsPathTitleHeight +
                                             kSettingsPathTitleValueGap + kSettingsPathValueHeight +
                                             kSettingsPathTitleButtonGap + kSettingsButtonHeight;

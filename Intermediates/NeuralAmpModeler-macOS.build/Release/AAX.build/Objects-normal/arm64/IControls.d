@@ -1,0 +1,65 @@
+dependencies: \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IPlug/IPlugOBJCPrefix.pch \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/Controls/IControls.cpp \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/Controls/IControls.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/IControl.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IPlug/IPlugPlatform.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/WDL/wdlstring.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/WDL/heapbuf.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/WDL/wdltypes.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/AudioDSPTools/dsp/ResamplingContainer/Dependencies/WDL/ptrlist.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/AudioDSPTools/dsp/ResamplingContainer/Dependencies/WDL/heapbuf.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/IGraphics.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IPlug/AAX/IPlugAAX_view_interface.h \
+  ../../iPlug2/Dependencies/IPlug/AAX_SDK/Interfaces/AAX_IViewContainer.h \
+  ../../iPlug2/Dependencies/IPlug/AAX_SDK/Interfaces/AAX_GUITypes.h \
+  ../../iPlug2/Dependencies/IPlug/AAX_SDK/Interfaces/AAX_Errors.h \
+  ../../iPlug2/Dependencies/IPlug/AAX_SDK/Interfaces/AAX_EnumSizeCheck.h \
+  ../../iPlug2/Dependencies/IPlug/AAX_SDK/Interfaces/AAX_EnvironmentUtilities.h \
+  ../../iPlug2/Dependencies/IPlug/AAX_SDK/Interfaces/AAX.h \
+  ../../iPlug2/Dependencies/IPlug/AAX_SDK/Interfaces/AAX_PreStructAlignmentHelper.h \
+  ../../iPlug2/Dependencies/IPlug/AAX_SDK/Interfaces/AAX_Push8ByteStructAlignment.h \
+  ../../iPlug2/Dependencies/IPlug/AAX_SDK/Interfaces/AAX_PostStructAlignmentHelper.h \
+  ../../iPlug2/Dependencies/IPlug/AAX_SDK/Interfaces/AAX_PopStructAlignment.h \
+  ../../iPlug2/Dependencies/IPlug/AAX_SDK/Interfaces/AAX_Version.h \
+  ../../iPlug2/Dependencies/IPlug/AAX_SDK/Interfaces/AAX_Enums.h \
+  ../../iPlug2/Dependencies/IPlug/AAX_SDK/Interfaces/AAX_Properties.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IPlug/IPlugConstants.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IPlug/IPlugLogger.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/WDL/mutex.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/WDL/wdlatomic.h \
+  ../../iPlug2/WDL/wdlutf8.h ../../iPlug2/WDL/wdltypes.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IPlug/IPlugUtilities.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IPlug/IPlugPaths.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/IGraphicsConstants.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/IGraphicsStructs.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IPlug/IPlugStructs.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IPlug/IPlugMidi.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/IGraphicsPrivate.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/WDL/wdlendian.h \
+  ../../iPlug2/Dependencies/IGraphics/NanoSVG/src/nanosvg.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/IGraphicsUtilities.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/IGraphicsPopupMenu.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/IGraphicsEditorDelegate.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IPlug/IPlugEditorDelegate.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IPlug/IPlugParameter.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/Controls/IColorPickerControl.h \
+  ../../iPlug2/Dependencies/IGraphics/NanoVG/src/nanovg.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/Controls/ILEDControl.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IPlug/Extras/Easing.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/Controls/IPopupMenuControl.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/Controls/IRTTextControl.h \
+  ../../iPlug2/IPlug/ISender.h ../../iPlug2/WDL/denormal.h \
+  ../../iPlug2/IPlug/IPlugPlatform.h ../../iPlug2/IPlug/IPlugQueue.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/Controls/IVKeyboardControl.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/Controls/IVMeterControl.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/Controls/IVScopeControl.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/Controls/IVMultiSliderControl.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/Controls/IVDisplayControl.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/Controls/IAboutBoxControl.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/Controls/IVPresetManagerControls.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IPlug/IPlugPluginBase.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IPlug/IPlugDelegate_select.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/Controls/IVNumberBoxControl.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/Controls/IVTabbedPagesControl.h \
+  /Users/kylewetton/apps/NeuralAmpModelerPlugin/iPlug2/IGraphics/Controls/IBubbleControl.h

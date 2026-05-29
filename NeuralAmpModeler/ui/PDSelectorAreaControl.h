@@ -17,6 +17,12 @@ public:
   {
     g.FillRect(kPDBackground, mRECT);
 
+    if (ShouldHideSelectors())
+    {
+      DrawBottomBorder(g);
+      return;
+    }
+
     IRECT section = mRECT.GetFromLeft(kInputMeterWidth);
     section = IRECT(section.R, mRECT.T, section.R + kAmpImageWidth, mRECT.B);
     DrawSelector(g, section, GetLabel(SelectorKind::Amp).c_str());
@@ -27,8 +33,7 @@ public:
     section = IRECT(section.R, mRECT.T, section.R + kOutputMeterWidth, mRECT.B);
     g.FillRect(kPDBackground, section);
 
-    const auto borderBounds = IRECT(mRECT.L, mRECT.B - kSelectorAreaBorderSize, mRECT.R, mRECT.B);
-    g.FillRect(kPDLightGrey, borderBounds);
+    DrawBottomBorder(g);
   }
 
   void OnMsgFromDelegate(int msgTag, int dataSize, const void* pData) override
@@ -51,6 +56,9 @@ public:
 
   void OnMouseDown(float x, float y, const IMouseMod& mod) override
   {
+    if (ShouldHideSelectors())
+      return;
+
     SelectorKind kind;
     SelectorGeometry geometry;
     if (!GetGeometryAtPoint(x, y, kind, geometry))
@@ -177,6 +185,17 @@ private:
 
     const auto rightArrowBounds = IRECT(x, arrowTop, x + kSelectorArrowSize, arrowTop + kSelectorArrowSize);
     g.DrawSVG(mRightArrow, rightArrowBounds, &mBlend);
+  }
+
+  void DrawBottomBorder(IGraphics& g)
+  {
+    const auto borderBounds = IRECT(mRECT.L, mRECT.B - kSelectorAreaBorderSize, mRECT.R, mRECT.B);
+    g.FillRect(kPDLightGrey, borderBounds);
+  }
+
+  bool ShouldHideSelectors()
+  {
+    return PLUG()->GetNAMRootDirectory().GetLength() == 0 && PLUG()->GetIRRootDirectory().GetLength() == 0;
   }
 
   SelectorState& State(SelectorKind kind) { return kind == SelectorKind::Amp ? mAmpState : mCabState; }

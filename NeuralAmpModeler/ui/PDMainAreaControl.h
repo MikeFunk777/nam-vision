@@ -123,6 +123,12 @@ public:
   {
     g.FillRect(kPDBackground, mRECT);
 
+    if (ShouldShowLibrarySetupNotice())
+    {
+      DrawLibrarySetupNotice(g);
+      return;
+    }
+
     IRECT section = mRECT.GetFromLeft(kInputMeterWidth);
     section = IRECT(section.R, mRECT.T, section.R + kAmpImageWidth, mRECT.B);
     DrawWidthFittedClippedBitmap(g, mAmpImage, section, section.Contains(mMouseX, mMouseY) ? 0.8f : 1.f);
@@ -136,6 +142,13 @@ public:
 
   void OnMouseDown(float x, float y, const IMouseMod& mod) override
   {
+    if (ShouldShowLibrarySetupNotice())
+    {
+      if (GetLibraryNoticeButtonBounds().Contains(x, y))
+        OpenSettingsScreen();
+      return;
+    }
+
     if (auto* ui = GetUI())
     {
       if (GetAmpImageBounds().Contains(x, y))
@@ -203,6 +216,71 @@ private:
     const auto amp = GetAmpImageBounds();
     const auto spacer = IRECT(amp.R, mRECT.T, amp.R + kMainAreaSpacerWidth, mRECT.B);
     return IRECT(spacer.R, mRECT.T, spacer.R + kCabImageWidth, mRECT.B);
+  }
+
+  IRECT GetLibraryContentBounds() const
+  {
+    const auto amp = GetAmpImageBounds();
+    const auto cab = GetCabImageBounds();
+    return IRECT(amp.L, mRECT.T, cab.R, mRECT.B);
+  }
+
+  IRECT GetLibraryNoticeTextBounds() const
+  {
+    const auto content = GetLibraryContentBounds();
+    const float totalHeight = kMainLibraryNoticeTextHeight + kMainLibraryNoticeButtonGap + kSettingsButtonHeight;
+    const float top = content.MH() - (totalHeight / 2.f);
+    return IRECT(content.MW() - (kMainLibraryNoticeWidth / 2.f), top,
+                 content.MW() + (kMainLibraryNoticeWidth / 2.f), top + kMainLibraryNoticeTextHeight);
+  }
+
+  IRECT GetLibraryNoticeButtonBounds() const
+  {
+    const auto textBounds = GetLibraryNoticeTextBounds();
+    const float top = textBounds.B + kMainLibraryNoticeButtonGap;
+    return IRECT(textBounds.MW() - (kMainLibraryNoticeButtonWidth / 2.f), top,
+                 textBounds.MW() + (kMainLibraryNoticeButtonWidth / 2.f), top + kSettingsButtonHeight);
+  }
+
+  bool ShouldShowLibrarySetupNotice()
+  {
+    return PLUG()->GetNAMRootDirectory().GetLength() == 0 && PLUG()->GetIRRootDirectory().GetLength() == 0;
+  }
+
+  void DrawLibrarySetupNotice(IGraphics& g)
+  {
+    const auto content = GetLibraryContentBounds();
+    const auto textBounds = GetLibraryNoticeTextBounds();
+    const auto buttonBounds = GetLibraryNoticeButtonBounds();
+    const IText text(kSelectorTextSize, kPDForeground, kPDFontMedium, EAlign::Center, EVAlign::Middle);
+    const float lineHeight = kSettingsInputLineHeight;
+    const float textTop = textBounds.MH() - lineHeight;
+
+    g.FillRect(kPDBackground, content);
+    g.DrawText(text, "Set up your amp and/or cab folders",
+               IRECT(textBounds.L, textTop, textBounds.R, textTop + lineHeight), &mBlend);
+    g.DrawText(text, "in settings to get started.",
+               IRECT(textBounds.L, textTop + lineHeight, textBounds.R, textTop + (2.f * lineHeight)), &mBlend);
+    DrawNoticeButton(g, buttonBounds, "Settings");
+  }
+
+  void DrawNoticeButton(IGraphics& g, const IRECT& bounds, const char* label)
+  {
+    const IText text(kSelectorTextSize, kPDForeground, kPDFontMedium, EAlign::Center, EVAlign::Middle);
+
+    g.DrawRoundRect(kPDForeground, bounds, kSettingsButtonRadius, &mBlend, kSettingsButtonBorderSize);
+    g.DrawText(text, label, bounds, &mBlend);
+  }
+
+  void OpenSettingsScreen()
+  {
+    if (auto* ui = GetUI())
+    {
+      if (auto* settings = ui->GetControlWithTag(kCtrlTagSettingsBox))
+        settings->Hide(false);
+
+      ui->SetAllControlsDirty();
+    }
   }
 
   static void DrawWidthFittedClippedBitmap(IGraphics& g, const IBitmap& bitmap, const IRECT& bounds, float opacity)
