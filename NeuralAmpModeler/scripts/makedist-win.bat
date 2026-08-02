@@ -93,7 +93,10 @@ REM msbuild NeuralAmpModeler.sln /p:configuration=release /p:platform=win32 /nol
 REM echo Building 64 bit binaries...
 REM add projects with /t to build VST3 and AAX
 msbuild NeuralAmpModeler.sln /t:NeuralAmpModeler-app;NeuralAmpModeler-vst3 /p:configuration=release /p:platform=x64 /nologo /verbosity:minimal /fileLogger /m /flp:logfile=build-win.log;errorsonly;append
-if errorlevel 1 exit /B 1
+if errorlevel 1 (
+  type build-win.log
+  exit /B 1
+)
 
 REM --echo Copying AAX Presets
 
