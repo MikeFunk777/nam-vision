@@ -1,4 +1,8 @@
-import zipfile, os, fileinput, string, sys, shutil
+import os
+from pathlib import Path
+import shutil
+import sys
+import zipfile
 
 scriptpath = os.path.dirname(os.path.realpath(__file__))
 projectpath = os.path.abspath(os.path.join(scriptpath, os.pardir))
@@ -8,6 +12,27 @@ IPLUG2_ROOT = os.path.join("..", "..", "iPlug2")
 sys.path.insert(0, os.path.join(scriptpath, IPLUG2_ROOT, "Scripts"))
 
 from get_archive_name import get_archive_name
+from parse_config import parse_config
+
+
+def add_file(archive, path, archive_name=None):
+    if not path.is_file():
+        raise FileNotFoundError(f"Required distribution file not found: {path}")
+
+    archive.write(path, archive_name or path.name, zipfile.ZIP_DEFLATED)
+
+
+def add_directory(archive, path):
+    if not path.is_dir():
+        raise FileNotFoundError(f"Required distribution directory not found: {path}")
+
+    for child in sorted(path.rglob("*")):
+        if child.is_file():
+            archive.write(
+                child,
+                child.relative_to(path.parent),
+                zipfile.ZIP_DEFLATED,
+            )
 
 
 def main():
@@ -16,69 +41,63 @@ def main():
         sys.exit(1)
     else:
         demo = int(sys.argv[1])
-        zip = int(sys.argv[2])
+        make_binary_zip = int(sys.argv[2])
 
-    dir = projectpath + "\\build-win\\out"
+    config = parse_config(projectpath)
+    binary_name = config["BUNDLE_NAME"]
+    output_dir = Path(projectpath) / "build-win" / "out"
 
-    if os.path.exists(dir):
-        shutil.rmtree(dir)
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
 
-    os.makedirs(dir)
+    output_dir.mkdir(parents=True)
 
-    files = []
-
-    if not zip:
-        default_installer_name = (
-            "NeuralAmpModeler Demo Installer"
-            if demo
-            else "NeuralAmpModeler Installer"
-        )
-        installer_name = os.environ.get(
-            "INSTALLER_OUTPUT_BASE_FILENAME", default_installer_name
-        )
-        installer = "\\build-win\\installer\\" + installer_name + ".exe"
-
-        files = [
-            projectpath + installer,
-            projectpath + "\\installer\\changelog.txt",
-            projectpath + "\\installer\\known-issues.txt",
-            projectpath + "\\manual\\NeuralAmpModeler manual.pdf",
-        ]
-    else:
-        files = [
-            projectpath
-            + "\\build-win\\NeuralAmpModeler.vst3\\Contents\\x86_64-win\\NeuralAmpModeler.vst3",
-            projectpath + "\\build-win\\NeuralAmpModeler_x64.exe",
-        ]
-
-    zipname = get_archive_name(projectpath, "win", "demo" if demo == 1 else "full")
-
-    zf = zipfile.ZipFile(
-        projectpath + "\\build-win\\out\\" + zipname + ".zip", mode="w"
+    archive_name = get_archive_name(
+        projectpath, "win", "demo" if demo == 1 else "full"
     )
+    distribution_archive = output_dir / f"{archive_name}.zip"
 
-    for f in files:
-        print("adding " + f)
-        zf.write(f, os.path.basename(f), zipfile.ZIP_DEFLATED)
+    with zipfile.ZipFile(distribution_archive, mode="w") as archive:
+        if make_binary_zip:
+            vst3_bundle = Path(projectpath) / "build-win" / f"{binary_name}.vst3"
+            app = Path(projectpath) / "build-win" / f"{binary_name}_x64.exe"
+            add_directory(archive, vst3_bundle)
+            add_file(archive, app)
+        else:
+            default_installer_name = (
+                config["PLUG_NAME"] + " Demo Installer"
+                if demo
+                else config["PLUG_NAME"] + " Installer"
+            )
+            installer_name = os.environ.get(
+                "INSTALLER_OUTPUT_BASE_FILENAME", default_installer_name
+            )
+            add_file(
+                archive,
+                Path(projectpath)
+                / "build-win"
+                / "installer"
+                / f"{installer_name}.exe",
+            )
+            add_file(archive, Path(projectpath) / "installer" / "changelog.txt")
+            add_file(archive, Path(projectpath) / "installer" / "known-issues.txt")
+            add_file(
+                archive,
+                Path(projectpath) / "manual" / "NeuralAmpModeler manual.pdf",
+            )
 
-    zf.close()
-    print("wrote " + zipname)
+    print(f"wrote {distribution_archive.name}")
 
-    zf = zipfile.ZipFile(
-        projectpath + "\\build-win\\out\\" + zipname + "-pdbs.zip", mode="w"
-    )
+    pdb_files = sorted((Path(projectpath) / "build-win" / "pdbs").glob("*.pdb"))
+    if not pdb_files:
+        raise FileNotFoundError("No Windows PDB files were produced")
 
-    files = [
-        projectpath + "\\build-win\\pdbs\\NeuralAmpModeler-vst3_x64.pdb",
-        projectpath + "\\build-win\\pdbs\\NeuralAmpModeler-app_x64.pdb",
-    ]
+    pdb_archive = output_dir / f"{archive_name}-pdbs.zip"
+    with zipfile.ZipFile(pdb_archive, mode="w") as archive:
+        for pdb_file in pdb_files:
+            add_file(archive, pdb_file)
 
-    for f in files:
-        print("adding " + f)
-        zf.write(f, os.path.basename(f), zipfile.ZIP_DEFLATED)
-
-    zf.close()
-    print("wrote " + zipname)
+    print(f"wrote {pdb_archive.name}")
 
 
 if __name__ == "__main__":

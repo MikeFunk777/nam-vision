@@ -41,7 +41,7 @@ def main():
     installer_script_name = env_or_default(
         "INSTALLER_SCRIPT_NAME", "NeuralAmpModeler.iss"
     )
-    display_name = env_or_default("INSTALLER_DISPLAY_NAME", bundle_name)
+    display_name = env_or_default("INSTALLER_DISPLAY_NAME", config["PLUG_NAME"])
     installer_suffix = " Demo" if demo else ""
     default_output_name = display_name + installer_suffix + " Installer"
 
@@ -49,22 +49,22 @@ def main():
         "AppName": display_name,
         "AppContact": env_or_default(
             "INSTALLER_APP_CONTACT",
-            "neuralampmodeler@gmail.com",
+            "https://github.com/kylewetton/nam-division/issues",
         ),
         "AppCopyright": env_or_default(
             "INSTALLER_APP_COPYRIGHT",
-            "Copyright (C) 2022 Steven Atkinson",
+            "Copyright (C) 2026 Pedal Division",
         ),
         "AppPublisher": env_or_default(
-            "INSTALLER_APP_PUBLISHER", "Steven Atkinson"
+            "INSTALLER_APP_PUBLISHER", config["PLUG_MFR"]
         ),
         "AppPublisherURL": env_or_default(
             "INSTALLER_APP_PUBLISHER_URL",
-            "https://www.neuralampmodeler.com/",
+            "https://pedaldivision.com",
         ),
         "AppSupportURL": env_or_default(
             "INSTALLER_APP_SUPPORT_URL",
-            "https://www.neuralampmodeler.com/",
+            "https://github.com/kylewetton/nam-division/issues",
         ),
         "AppVersion": config["FULL_VER_STR"],
         "VersionInfoVersion": config["FULL_VER_STR"],
