@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef OS_MAC
+#include "../platform/PDSecurityScopedBookmarks.h"
+#endif
+
 // Included from NeuralAmpModeler.cpp after the NeuralAmpModeler class is declared.
 // These workflow files split the implementation without changing Xcode target membership.
 

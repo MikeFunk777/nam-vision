@@ -197,6 +197,14 @@
 		4F3862F12014BBEC0009F402 /* NeuralAmpModeler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4F3862ED2014BBEC0009F402 /* NeuralAmpModeler.cpp */; };
 		4F3862F22014BBEC0009F402 /* NeuralAmpModeler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4F3862ED2014BBEC0009F402 /* NeuralAmpModeler.cpp */; };
 		4F3862F32014BBEC0009F402 /* NeuralAmpModeler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4F3862ED2014BBEC0009F402 /* NeuralAmpModeler.cpp */; };
+		10FCDEE748BC4BF8AB31FEEC /* PDSecurityScopedBookmarks.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7090971089394E6BA862B8C2 /* PDSecurityScopedBookmarks.mm */; };
+		3719F897556D494B9EB9B3FD /* PDSecurityScopedBookmarks.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7090971089394E6BA862B8C2 /* PDSecurityScopedBookmarks.mm */; };
+		592C14774A4047E384BFBC44 /* PDSecurityScopedBookmarks.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7090971089394E6BA862B8C2 /* PDSecurityScopedBookmarks.mm */; };
+		88ACE7DC2945454194884BFD /* PDSecurityScopedBookmarks.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7090971089394E6BA862B8C2 /* PDSecurityScopedBookmarks.mm */; };
+		AD3904C308B64FDB9E754EDE /* PDSecurityScopedBookmarks.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7090971089394E6BA862B8C2 /* PDSecurityScopedBookmarks.mm */; };
+		CA178634AD4B4605BE92BB3C /* PDSecurityScopedBookmarks.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7090971089394E6BA862B8C2 /* PDSecurityScopedBookmarks.mm */; };
+		CCA648E2FA1146C89DD80B08 /* PDSecurityScopedBookmarks.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7090971089394E6BA862B8C2 /* PDSecurityScopedBookmarks.mm */; };
+		DF0ED4EEAEF54FB88C7C2B3B /* PDSecurityScopedBookmarks.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7090971089394E6BA862B8C2 /* PDSecurityScopedBookmarks.mm */; };
 		4F3EE1C0231438D000004786 /* namdivision-macOS-MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 4F1B4AE32014D33600BC64D4 /* namdivision-macOS-MainMenu.xib */; };
 		4F3EE1C2231438D000004786 /* IPlugProcessor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4F8F61A8202807B9003F2573 /* IPlugProcessor.cpp */; };
 		4F3EE1C3231438D000004786 /* RtMidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4F10D3D7203A6719003EF82A /* RtMidi.cpp */; settings = {COMPILER_FLAGS = "-Wno-shorten-64-to-32"; }; };
@@ -688,6 +696,8 @@
 		4F35DEAC207E5C5A00867D8F /* IPlugPluginBase.h */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.c.h; name = IPlugPluginBase.h; path = ../../iPlug2/IPlug/IPlugPluginBase.h; sourceTree = "<group>"; tabWidth = 2; };
 		4F3862ED2014BBEC0009F402 /* NeuralAmpModeler.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = NeuralAmpModeler.cpp; path = ../NeuralAmpModeler.cpp; sourceTree = "<group>"; };
 		4F3862EE2014BBEC0009F402 /* NeuralAmpModeler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = NeuralAmpModeler.h; path = ../NeuralAmpModeler.h; sourceTree = "<group>"; };
+		7090971089394E6BA862B8C2 /* PDSecurityScopedBookmarks.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = PDSecurityScopedBookmarks.mm; path = PDSecurityScopedBookmarks.mm; sourceTree = "<group>"; };
+		77738F1BBF934E93A78DD4B6 /* PDSecurityScopedBookmarks.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = PDSecurityScopedBookmarks.h; path = PDSecurityScopedBookmarks.h; sourceTree = "<group>"; };
 		4F3862FF2014BCC70009F402 /* scripts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = scripts; path = ../scripts; sourceTree = "<group>"; };
 		4F3907602013EBA300DDA490 /* namdivision.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "namdivision.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4F3907772013EC0400DDA490 /* IPlugAUViewController.mm */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = IPlugAUViewController.mm; path = ../../iPlug2/IPlug/AUv3/IPlugAUViewController.mm; sourceTree = "<group>"; };
@@ -1121,6 +1131,7 @@
 				4F3862EE2014BBEC0009F402 /* NeuralAmpModeler.h */,
 				4F3862ED2014BBEC0009F402 /* NeuralAmpModeler.cpp */,
 				4F9979232A066F8B0066545C /* NeuralAmpModelerControls.h */,
+				B8C8654B52E94ED2BC66F34A /* platform */,
 				AA341E1B2B9E5A530069C260 /* ToneStack.cpp */,
 				AA341E1C2B9E5A530069C260 /* ToneStack.h */,
 				4F9313232315CA1100DB2383 /* README.md */,
@@ -1130,6 +1141,16 @@
 				19C28FB8FE9D52D311CA2CBB /* Products */,
 			);
 			name = IPlugExample;
+			sourceTree = "<group>";
+		};
+		B8C8654B52E94ED2BC66F34A /* platform */ = {
+			isa = PBXGroup;
+			children = (
+				77738F1BBF934E93A78DD4B6 /* PDSecurityScopedBookmarks.h */,
+				7090971089394E6BA862B8C2 /* PDSecurityScopedBookmarks.mm */,
+			);
+			name = platform;
+			path = ../platform;
 			sourceTree = "<group>";
 		};
 		089C1671FE841209C02AAC07 /* Frameworks */ = {
@@ -2631,6 +2652,7 @@
 				4F78D95C13B63BA50032E0F3 /* IPlugParameter.cpp in Sources */,
 				4F2FB1B52A0047430027AB66 /* activations.cpp in Sources */,
 				4FB1F58C20E4B006004157C8 /* IGraphicsMac.mm in Sources */,
+				AD3904C308B64FDB9E754EDE /* PDSecurityScopedBookmarks.mm in Sources */,
 				4F3862F22014BBEC0009F402 /* NeuralAmpModeler.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -2679,6 +2701,7 @@
 				4F3EE1DB231438D000004786 /* IPlugAPP_main.cpp in Sources */,
 				4F2FB1682A0047430027AB66 /* dsp.cpp in Sources */,
 				4F3EE1DD231438D000004786 /* IGraphicsMac.mm in Sources */,
+				DF0ED4EEAEF54FB88C7C2B3B /* PDSecurityScopedBookmarks.mm in Sources */,
 				4F3EE1DE231438D000004786 /* NeuralAmpModeler.cpp in Sources */,
 				4F2FB1A42A0047430027AB66 /* convnet.cpp in Sources */,
 				4F3EE1E0231438D000004786 /* IPlugAPIBase.cpp in Sources */,
@@ -2704,6 +2727,7 @@
 				4F78BE1422E7406D00AD537E /* NeuralAmpModeler.h in Sources */,
 				4F0D965C23099F6900BFDED0 /* IPlugProcessor.cpp in Sources */,
 				4F78BE1522E7406D00AD537E /* NeuralAmpModeler.cpp in Sources */,
+				3719F897556D494B9EB9B3FD /* PDSecurityScopedBookmarks.mm in Sources */,
 				4F78BE1622E7406D00AD537E /* IGraphicsMac_view.mm in Sources */,
 				4F78BE1722E7406D00AD537E /* IGraphicsMac.mm in Sources */,
 				4F78BE1822E7406D00AD537E /* IGraphicsCoreText.mm in Sources */,
@@ -2750,6 +2774,7 @@
 				B8E22A0C220268C4007CBF4C /* IPlugVST3_ProcessorBase.cpp in Sources */,
 				4F2FB1C62A0047430027AB66 /* get_dsp.cpp in Sources */,
 				4F3862F12014BBEC0009F402 /* NeuralAmpModeler.cpp in Sources */,
+				CA178634AD4B4605BE92BB3C /* PDSecurityScopedBookmarks.mm in Sources */,
 				4F81591F205D50EB00393585 /* pluginfactory.cpp in Sources */,
 				4F6FD2B322675B6300FC59E6 /* IGraphicsCoreText.mm in Sources */,
 				4F815973205D50EB00393585 /* vstinitiids.cpp in Sources */,
@@ -2839,6 +2864,7 @@
 				4F2FB1762A0047430027AB66 /* ImpulseResponse.cpp in Sources */,
 				4F7C4963255DDFC600DF7588 /* ITextEntryControl.cpp in Sources */,
 				4F3862F32014BBEC0009F402 /* NeuralAmpModeler.cpp in Sources */,
+				592C14774A4047E384BFBC44 /* PDSecurityScopedBookmarks.mm in Sources */,
 				4F2FB1952A0047430027AB66 /* dsp.cpp in Sources */,
 				AA341E212B9E5A530069C260 /* ToneStack.cpp in Sources */,
 				4FB600231567CB0A0020189A /* IPlugParameter.cpp in Sources */,
@@ -2880,6 +2906,7 @@
 				4F472103209B294400A0A0A8 /* IPlugVST3_Controller.cpp in Sources */,
 				4F78BE2D22E7412300AD537E /* IGraphicsNanoVG_src.m in Sources */,
 				4FC3EFCB2086C27800BD11FA /* NeuralAmpModeler.cpp in Sources */,
+				88ACE7DC2945454194884BFD /* PDSecurityScopedBookmarks.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2928,6 +2955,7 @@
 				4F2FB1602A0047430027AB66 /* dsp.cpp in Sources */,
 				4FB1F58920E4B004004157C8 /* IGraphicsMac.mm in Sources */,
 				4F3862EF2014BBEC0009F402 /* NeuralAmpModeler.cpp in Sources */,
+				CCA648E2FA1146C89DD80B08 /* PDSecurityScopedBookmarks.mm in Sources */,
 				4F2FB19C2A0047430027AB66 /* convnet.cpp in Sources */,
 				4F78D90B13B63BA50032E0F3 /* IPlugAPIBase.cpp in Sources */,
 				4F35DEAD207E5C5A00867D8F /* IPlugPluginBase.cpp in Sources */,
@@ -2951,6 +2979,7 @@
 				4FFBB90520863B0E00DDD0E7 /* baseiids.cpp in Sources */,
 				4FFBB90620863B0E00DDD0E7 /* IPlugTimer.cpp in Sources */,
 				4FFBB90720863B0E00DDD0E7 /* NeuralAmpModeler.cpp in Sources */,
+				10FCDEE748BC4BF8AB31FEEC /* PDSecurityScopedBookmarks.mm in Sources */,
 				4F2FB1A12A0047430027AB66 /* convnet.cpp in Sources */,
 				4F2FB15A2A0047420027AB66 /* RecursiveLinearFilter.cpp in Sources */,
 				4FFBB90820863B0E00DDD0E7 /* pluginfactory.cpp in Sources */,
