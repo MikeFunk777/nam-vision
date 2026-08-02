@@ -1,149 +1,139 @@
 name: Release Native
 
 on:
-  workflow_dispatch:
   push:
     tags:
-      - "v*"
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   PROJECT_NAME: NeuralAmpModeler
+  INSTALLER_DISPLAY_NAME: NAM Division
+  INSTALLER_APP_CONTACT: https://github.com/kylewetton/nam-division/issues
+  INSTALLER_APP_COPYRIGHT: Copyright (C) 2026 Pedal Division
+  INSTALLER_APP_PUBLISHER: Pedal Division
+  INSTALLER_APP_PUBLISHER_URL: https://pedaldivision.com
+  INSTALLER_APP_SUPPORT_URL: https://github.com/kylewetton/nam-division/issues
+  INSTALLER_OUTPUT_BASE_FILENAME: NAM Division Installer
+  INSTALLER_SCRIPT_NAME: NeuralAmpModeler.iss
 
 jobs:
-  create_release:
-    name: Create release
+  verify_version:
+    name: Verify release version
     runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{steps.create_release.outputs.upload_url}}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v7
+
+      - name: Match tag to plug-in version
+        shell: bash
+        run: |
+          version=$(sed -n 's/^#define PLUG_VERSION_STR "\([^"]*\)"/\1/p' "$PROJECT_NAME/config.h")
+          if [[ "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "Release tag $GITHUB_REF_NAME does not match config.h version $version" >&2
+            exit 1
+          fi
+
+  build:
+    name: Build ${{ matrix.label }}
+    needs: verify_version
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: macOS
+            os: macos-15-intel
+            artifact_name: release-macos
+            artifact_path: NeuralAmpModeler/build-mac/out/*.dmg
+          - label: Windows
+            os: windows-2022
+            artifact_name: release-windows
+            artifact_path: |
+              NeuralAmpModeler/build-win/out/*.zip
+              !NeuralAmpModeler/build-win/out/*-pdbs.zip
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
-      - name: Create release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      - name: Get VST3 SDK
+        shell: bash
+        run: |
+          cd iPlug2/Dependencies/IPlug
+          ./download-iplug-sdks.sh
+
+      - name: Get prebuilt libraries
+        shell: bash
+        run: |
+          cd iPlug2/Dependencies
+          ./download-prebuilt-libs.sh
+
+      - name: Build macOS installer
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          cd "$PROJECT_NAME/scripts"
+          ./makedist-mac.sh full installer
+
+      - name: Add MSBuild to PATH
+        if: runner.os == 'Windows'
+        uses: microsoft/setup-msbuild@v3
         with:
-          draft: true
-          tag_name: ${{github.ref}}
-          release_name: Release ${{github.ref}}
-          body_path: ${{env.PROJECT_NAME}}/installer/changelog.txt
+          msbuild-architecture: x64
 
-  build:
-    name: Build
-    needs: create_release
-    runs-on: ${{matrix.os}}
-    strategy:
-      matrix:
-        os: [macos-latest, windows-latest]
-        include:
-          - os: macos-latest
-            build_dir: build-mac
-          - os: windows-latest
-            build_dir: build-win
+      - name: Set up Python
+        if: runner.os == 'Windows'
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
 
+      - name: Build Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cd "$env:PROJECT_NAME\scripts"
+          & .\makedist-win.bat full installer
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload release candidate
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_path }}
+          if-no-files-found: error
+
+  create_draft:
+    name: Create draft release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-    - name: Check out repository
-      uses: actions/checkout@v2
-      with:
-        submodules: recursive
+      - name: Download release candidates
+        uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
 
-    - name: Get VST3 SDK
-      run: |
-        cd iPlug2/Dependencies/IPlug
-        ./download-iplug-sdks.sh
-      shell: bash
+      - name: List release assets
+        run: find dist -maxdepth 1 -type f -print
 
-    - name: Get Prebuilt Libs
-      run: |
-        cd iPlug2/Dependencies
-        ./download-prebuilt-libs.sh
-      shell: bash
-
-    - name: Get Archive Name macOS
-      id: mac_archivename_step
-      if: matrix.os == 'macOS-latest'
-      run: |
-        ARCHIVE_NAME=`python3 iPlug2/Scripts/get_archive_name.py ${{env.PROJECT_NAME}} mac full`
-        echo "archive_name=$ARCHIVE_NAME" >> $GITHUB_OUTPUT
-      shell: bash
-
-    - name: Build macOS
-      if: matrix.os == 'macOS-latest'
-      run: |
-        cd ${{env.PROJECT_NAME}}/scripts
-        ./makedist-mac.sh full installer
-      shell: bash
-
-    - name: Upload mac DSYMs release asset
-      if: matrix.os == 'macOS-latest'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-      with:
-        upload_url: ${{needs.create_release.outputs.upload_url}}
-        asset_path: ${{env.PROJECT_NAME}}/${{matrix.build_dir}}/out/${{steps.mac_archivename_step.outputs.archive_name}}-dSYMs.zip
-        asset_name: ${{steps.mac_archivename_step.outputs.archive_name}}-dSYMs.zip
-        asset_content_type: application/zip
-
-    - name: Upload mac dmg release asset
-      if: matrix.os == 'macOS-latest'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-      with:
-        upload_url: ${{needs.create_release.outputs.upload_url}}
-        asset_path: ${{env.PROJECT_NAME}}/${{matrix.build_dir}}/out/${{steps.mac_archivename_step.outputs.archive_name}}.dmg
-        asset_name: ${{steps.mac_archivename_step.outputs.archive_name}}.dmg
-        asset_content_type: application/octet-stream
-
-    - name: Add msbuild to PATH (Windows)
-      if: matrix.os == 'windows-latest'
-      uses: microsoft/setup-msbuild@v1.0.2
-
-    - name: Setup Python3
-      if: matrix.os == 'windows-latest'
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.x'
-        architecture: 'x64'
-
-    - name: Get Archive Name Windows
-      id: win_archivename_step
-      if: matrix.os == 'windows-latest'
-      run: |
-        ARCHIVE_NAME=`python.exe iPlug2/Scripts/get_archive_name.py ${{env.PROJECT_NAME}} win full`
-        echo "archive_name=$ARCHIVE_NAME" >> $GITHUB_OUTPUT
-      shell: bash
-
-    - name: Build Windows
-      if: matrix.os == 'windows-latest'
-      run: |
-        cd ${{env.PROJECT_NAME}}\scripts
-        .\makedist-win.bat full installer
-      shell: pwsh
-
-    - name: Upload Windows pdb release asset
-      if: matrix.os == 'windows-latest'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-      with:
-        upload_url: ${{needs.create_release.outputs.upload_url}}
-        asset_path: ${{env.PROJECT_NAME}}/${{matrix.build_dir}}/out/${{steps.win_archivename_step.outputs.archive_name}}-pdbs.zip
-        asset_name: ${{steps.win_archivename_step.outputs.archive_name}}-pdbs.zip
-        asset_content_type: application/zip
-
-    - name: Upload Windows zip release asset
-      if: matrix.os == 'windows-latest'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-      with:
-        upload_url: ${{needs.create_release.outputs.upload_url}}
-        asset_path: ${{env.PROJECT_NAME}}/${{matrix.build_dir}}/out/${{steps.win_archivename_step.outputs.archive_name}}.zip
-        asset_name: ${{steps.win_archivename_step.outputs.archive_name}}.zip
-        asset_content_type: application/zip
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --draft \
+            --generate-notes \
+            --title "NAM Division $GITHUB_REF_NAME" \
+            --verify-tag

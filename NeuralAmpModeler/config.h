@@ -1,11 +1,11 @@
 #define PLUG_NAME "NAM Division"
 #define PLUG_MFR "Pedal Division"
-#define PLUG_VERSION_HEX 0x0000070f
-#define PLUG_VERSION_STR "0.7.15"
+#define PLUG_VERSION_HEX 0x00010000
+#define PLUG_VERSION_STR "1.0.0"
 #define PLUG_UNIQUE_ID 'NMDv'
 #define PLUG_MFR_ID 'NDiv'
 #define PLUG_URL_STR "https://pedaldivision.com"
-#define PLUG_EMAIL_STR "spam@me.com"
+#define PLUG_EMAIL_STR ""
 #define PLUG_COPYRIGHT_STR "Copyright 2026 Pedal Division"
 #define PLUG_CLASS_NAME NeuralAmpModeler
 #define BUNDLE_NAME "namdivision"

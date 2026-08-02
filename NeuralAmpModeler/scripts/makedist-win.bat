@@ -37,7 +37,9 @@ echo ------------------------------------------------------------------
 echo Updating version numbers ...
 
 call python prepare_resources-win.py %DEMO%
+if errorlevel 1 exit /B 1
 call python update_installer-win.py %DEMO%
+if errorlevel 1 exit /B 1
 
 cd ..\
 
@@ -51,19 +53,25 @@ echo Building ...
 REM Remove previous build logs
 if exist "build-win.log" (del build-win.log)
 
-if exist "%ProgramFiles(x86)%" (goto 64-Bit) else (goto 32-Bit)
+REM setup-msbuild adds MSBuild to PATH in GitHub Actions. For local builds,
+REM locate the newest installed Visual Studio toolchain with vswhere.
+where msbuild >nul 2>nul
+if not errorlevel 1 goto MSBUILD_READY
 
-if not defined DevEnvDir (
-:32-Bit
-echo 32-Bit O/S detected
-call "%ProgramFiles%\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" x86_x64
-goto END
+if not exist "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" (
+  echo ERROR: MSBuild was not found and vswhere is unavailable.
+  exit /B 1
+)
 
-:64-Bit
-echo 64-Bit Host O/S detected
-call "%ProgramFiles(x86)%\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" x86_x64
-goto END
-:END
+for /F "usebackq tokens=*" %%I in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath`) do (
+  call "%%I\VC\Auxiliary\Build\vcvarsall.bat" x86_x64
+)
+
+:MSBUILD_READY
+where msbuild >nul 2>nul
+if errorlevel 1 (
+  echo ERROR: MSBuild is unavailable.
+  exit /B 1
 )
 
 
@@ -85,6 +93,7 @@ REM msbuild NeuralAmpModeler.sln /p:configuration=release /p:platform=win32 /nol
 REM echo Building 64 bit binaries...
 REM add projects with /t to build VST3 and AAX
 msbuild NeuralAmpModeler.sln /t:NeuralAmpModeler-app;NeuralAmpModeler-vst3 /p:configuration=release /p:platform=x64 /nologo /verbosity:minimal /fileLogger /m /flp:logfile=build-win.log;errorsonly;append
+if errorlevel 1 exit /B 1
 
 REM --echo Copying AAX Presets
 
@@ -107,7 +116,12 @@ echo Making Installer ...
   REM goto END-is
 
   REM :64-Bit-is
-  "%ProgramFiles(x86)%\Inno Setup 6\iscc" /Q ".\installer\NeuralAmpModeler.iss"
+  if not exist "%ProgramFiles(x86)%\Inno Setup 6\iscc.exe" (
+    echo ERROR: Inno Setup 6 is required to build the Windows installer.
+    exit /B 1
+  )
+  "%ProgramFiles(x86)%\Inno Setup 6\iscc.exe" /Q ".\installer\NeuralAmpModeler.iss"
+  if errorlevel 1 exit /B 1
   REM goto END-is
 
   REM :END-is
@@ -125,9 +139,8 @@ echo Making Installer ...
   echo Making Zip File ...
 )
 
-FOR /F "tokens=* USEBACKQ" %%F IN (`call python scripts\makezip-win.py %DEMO% %ZIP%`) DO (
-SET ZIP_NAME=%%F
-)
+call python scripts\makezip-win.py %DEMO% %ZIP%
+if errorlevel 1 exit /B 1
 
 echo ------------------------------------------------------------------
 echo Printing log file to console...
@@ -140,6 +153,4 @@ echo Usage: %0 [demo/full] [zip/installer]
 exit /B 1
 
 :SUCCESS
-echo %ZIP_NAME%
-
 exit /B 0

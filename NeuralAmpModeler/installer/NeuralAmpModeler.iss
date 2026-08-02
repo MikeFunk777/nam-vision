@@ -1,19 +1,19 @@
 [Setup]
-AppName=NeuralAmpModeler
-AppContact=neuralampmodeler@gmail.com
-AppCopyright=Copyright (C) 2022 Steven Atkinson
-AppPublisher=Steven Atkinson
-AppPublisherURL=https://www.neuralampmodeler.com/
-AppSupportURL=https://www.neuralampmodeler.com/
-AppVersion=0.7.14
-VersionInfoVersion=0.7.14
-DefaultDirName={pf}\NeuralAmpModeler
-DefaultGroupName=NeuralAmpModeler
+AppName=NAM Division
+AppContact=https://github.com/kylewetton/nam-division/issues
+AppCopyright=Copyright (C) 2026 Pedal Division
+AppPublisher=Pedal Division
+AppPublisherURL=https://pedaldivision.com
+AppSupportURL=https://github.com/kylewetton/nam-division/issues
+AppVersion=1.0.0
+VersionInfoVersion=1.0.0
+DefaultDirName={pf}\NAM Division
+DefaultGroupName=NAM Division
 Compression=lzma2
 SolidCompression=yes
 OutputDir=.\..\build-win\installer
 ArchitecturesInstallIn64BitMode=x64
-OutputBaseFilename=NeuralAmpModeler Installer
+OutputBaseFilename=NAM Division Installer
 LicenseFile=license.rtf
 SetupLogging=yes
 ShowComponentSizes=no
@@ -25,8 +25,8 @@ Name: "full"; Description: "Full installation"
 Name: "custom"; Description: "Custom installation"; Flags: iscustom
 
 [Messages]
-WelcomeLabel1=Welcome to the NeuralAmpModeler installer
-SetupWindowTitle=NeuralAmpModeler installer
+WelcomeLabel1=Welcome to the NAM Division installer
+SetupWindowTitle=NAM Division installer
 SelectDirLabel3=The standalone application and supporting files will be installed in the following folder.
 SelectDirBrowseLabel=To continue, click Next. If you would like to select a different folder (not recommended), click Browse.
 
@@ -78,11 +78,11 @@ Source: "changelog.txt"; DestDir: "{app}"
 Source: "readme-win.rtf"; DestDir: "{app}"; DestName: "readme.rtf"; Flags: isreadme
 
 [Icons]
-Name: "{group}\NeuralAmpModeler"; Filename: "{app}\NeuralAmpModeler_x64.exe"
+Name: "{group}\NAM Division"; Filename: "{app}\NeuralAmpModeler_x64.exe"
 Name: "{group}\User guide"; Filename: "{app}\NeuralAmpModeler manual.pdf"
 Name: "{group}\Changelog"; Filename: "{app}\changelog.txt"
 ;Name: "{group}\readme"; Filename: "{app}\readme.rtf"
-Name: "{group}\Uninstall NeuralAmpModeler"; Filename: "{app}\unins000.exe"
+Name: "{group}\Uninstall NAM Division"; Filename: "{app}\unins000.exe"
 
 [Code]
 var

@@ -24,8 +24,9 @@ if [ -z "$DEVELOPER_DIR" ] && [ -d "/Applications/Xcode.app/Contents/Developer" 
   export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
 fi
 
-# CODESIGN disabled by default. 
-CODESIGN=0
+# CODESIGN is disabled by default. Set CODESIGN=1 in a configured release
+# environment after importing the required Developer ID certificates.
+CODESIGN=${CODESIGN:-0}
 
 # macOS codesigning/notarization
 INSTALLER_PKG_ID_PREFIX=${INSTALLER_PKG_ID_PREFIX:-com.pedaldivision}

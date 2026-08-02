@@ -3,9 +3,9 @@ import zipfile, os, fileinput, string, sys, shutil
 scriptpath = os.path.dirname(os.path.realpath(__file__))
 projectpath = os.path.abspath(os.path.join(scriptpath, os.pardir))
 
-IPLUG2_ROOT = "..\..\iPlug2"
+IPLUG2_ROOT = os.path.join("..", "..", "iPlug2")
 
-sys.path.insert(0, os.path.join(scriptpath, IPLUG2_ROOT + "\Scripts"))
+sys.path.insert(0, os.path.join(scriptpath, IPLUG2_ROOT, "Scripts"))
 
 from get_archive_name import get_archive_name
 
@@ -28,10 +28,15 @@ def main():
     files = []
 
     if not zip:
-        installer = "\\build-win\\installer\\NeuralAmpModeler Installer.exe"
-
-        if demo:
-            installer = "\\build-win\\installer\\NeuralAmpModeler Demo Installer.exe"
+        default_installer_name = (
+            "NeuralAmpModeler Demo Installer"
+            if demo
+            else "NeuralAmpModeler Installer"
+        )
+        installer_name = os.environ.get(
+            "INSTALLER_OUTPUT_BASE_FILENAME", default_installer_name
+        )
+        installer = "\\build-win\\installer\\" + installer_name + ".exe"
 
         files = [
             projectpath + installer,

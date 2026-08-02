@@ -2,7 +2,7 @@ Third-Party Notices
 ===================
 
 This product includes open-source and third-party software. The notices below
-are provided for the Neural Amp Modeler plug-ins and standalone application,
+are provided for the NAM Division plug-ins and standalone application,
 including the VST3, Audio Unit, and standalone application installer outputs.
 
 Downstream product forks should review this file before release, update product
@@ -10,12 +10,13 @@ source-code locations where appropriate, and add notices for any additional
 dependencies they ship.
 
 
-NeuralAmpModelerPlugin
-----------------------
+NAM Division modifications and NeuralAmpModelerPlugin
+-----------------------------------------------------
 
 MIT License
 
 Copyright (c) 2022 Steven Atkinson
+Copyright (c) 2026 Kyle Wetton (modifications)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

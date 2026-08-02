@@ -38,6 +38,9 @@ def main():
 
     config = parse_config(projectpath)
     bundle_name = config["BUNDLE_NAME"]
+    installer_script_name = env_or_default(
+        "INSTALLER_SCRIPT_NAME", "NeuralAmpModeler.iss"
+    )
     display_name = env_or_default("INSTALLER_DISPLAY_NAME", bundle_name)
     installer_suffix = " Demo" if demo else ""
     default_output_name = display_name + installer_suffix + " Installer"
@@ -84,7 +87,7 @@ def main():
     print("Updating Windows Installer version info...")
 
     for line in fileinput.input(
-        projectpath + "/installer/" + bundle_name + ".iss", inplace=1
+        projectpath + "/installer/" + installer_script_name, inplace=1
     ):
         if "=" in line:
             key = line.split("=", 1)[0]

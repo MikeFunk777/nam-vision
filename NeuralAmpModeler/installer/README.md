@@ -1,6 +1,7 @@
 # Installer Identity
 
-The checked-in Windows installer uses the Neural Amp Modeler product metadata. Before publishing a pre-built installer from a private release fork, replace `license.rtf` with the product's real license and override the installer identity if needed.
+The checked-in installers use the NAM Division product metadata. Review the
+identity, `license.rtf`, and third-party notices before every public release.
 
 The Windows distribution script calls `scripts/update_installer-win.py`, which accepts these environment variable overrides:
 
@@ -13,6 +14,7 @@ The Windows distribution script calls `scripts/update_installer-win.py`, which a
 - `INSTALLER_OUTPUT_BASE_FILENAME`
 - `INSTALLER_WELCOME_LABEL`
 - `INSTALLER_SETUP_WINDOW_TITLE`
+- `INSTALLER_SCRIPT_NAME`
 
 The macOS installer package identifiers default to `com.pedaldivision.*`. Set `INSTALLER_PKG_ID_PREFIX` to use another reverse-DNS prefix, for example `com.example.myproduct`.
 
