@@ -16,9 +16,8 @@ by Steven Atkinson.
 
 ## Installation
 
-Pre-built Windows and macOS installers will be available from
-[Releases](https://github.com/kylewetton/nam-division/releases). No official
-release has been published yet.
+For pre-built Windows and macOS installers, check
+[Releases](https://github.com/kylewetton/nam-division/releases).
 
 ## How to Use (in 4 steps)
 
@@ -110,6 +109,8 @@ Then head back and click on a head or cab, it will bring up your gallery of amps
 ## Thumbnail templates
 
 The plugin really shines when the thumbnails are set up correct. There are only two and the easiest way is to use the template to position the gear correctly.
+
+These templates are both available in the release package.
 
 **Do your best to isolate the amp and cab onto a white background, find the best front on photo that serves this purpose.**
 

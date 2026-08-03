@@ -73,13 +73,15 @@ Source: "ThirdPartyNotices.txt"; DestDir: "{cf64}\VST3\namdivision.vst3\Contents
 ;Source: "..\build-win\namdivision.aaxplugin\Desktop.ini"; DestDir: "{cf64}\Avid\Audio\Plug-Ins\namdivision.aaxplugin\"; Check: Is64BitInstallMode; Components:aax_64; Flags: overwritereadonly ignoreversion; Attribs: hidden system;
 ;Source: "..\build-win\namdivision.aaxplugin\PlugIn.ico"; DestDir: "{cf64}\Avid\Audio\Plug-Ins\namdivision.aaxplugin\"; Check: Is64BitInstallMode; Components:aax_64; Flags: overwritereadonly ignoreversion; Attribs: hidden system;
 
-Source: "..\manual\NeuralAmpModeler manual.pdf"; DestDir: "{app}"
+Source: "..\manual\NAM Division README.pdf"; DestDir: "{app}"
+Source: "..\..\docs\images\amp-template.jpg"; DestDir: "{app}"
+Source: "..\..\docs\images\cab-template.jpg"; DestDir: "{app}"
 Source: "changelog.txt"; DestDir: "{app}"
 Source: "readme-win.rtf"; DestDir: "{app}"; DestName: "readme.rtf"; Flags: isreadme
 
 [Icons]
 Name: "{group}\NAM Division"; Filename: "{app}\namdivision_x64.exe"
-Name: "{group}\User guide"; Filename: "{app}\NeuralAmpModeler manual.pdf"
+Name: "{group}\NAM Division README"; Filename: "{app}\NAM Division README.pdf"
 Name: "{group}\Changelog"; Filename: "{app}\changelog.txt"
 ;Name: "{group}\readme"; Filename: "{app}\readme.rtf"
 Name: "{group}\Uninstall NAM Division"; Filename: "{app}\unins000.exe"

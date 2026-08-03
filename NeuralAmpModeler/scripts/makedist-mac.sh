@@ -73,6 +73,38 @@ NOTARIZE_BUNDLE_ID_DEMO=${NOTARIZE_BUNDLE_ID_DEMO:-${INSTALLER_PKG_ID_PREFIX}.${
 
 ARCHIVE_NAME=$PLUGIN_NAME-v$FULL_VERSION-mac
 THIRD_PARTY_NOTICES="./installer/ThirdPartyNotices.txt"
+EXAMPLE_COLLECTION="../distribution/nam-division-collection"
+README_PDF="manual/NAM Division README.pdf"
+AMP_TEMPLATE="../docs/images/amp-template.jpg"
+CAB_TEMPLATE="../docs/images/cab-template.jpg"
+
+stage_example_collection()
+{
+  target_directory=$1
+
+  if [ ! -d "$EXAMPLE_COLLECTION" ]; then
+    echo "ERROR: Example collection not found at $EXAMPLE_COLLECTION"
+    exit 1
+  fi
+
+  mkdir -p "$target_directory"
+  cp -R "$EXAMPLE_COLLECTION" "$target_directory/" || exit 1
+  find "$target_directory/$(basename "$EXAMPLE_COLLECTION")" -type f -name ".DS_Store" -delete || exit 1
+}
+
+stage_thumbnail_templates()
+{
+  target_directory=$1
+
+  for template in "$AMP_TEMPLATE" "$CAB_TEMPLATE"; do
+    if [ ! -f "$template" ]; then
+      echo "ERROR: Thumbnail template not found at $template"
+      exit 1
+    fi
+
+    cp "$template" "$target_directory/" || exit 1
+  done
+}
 
 copy_third_party_notices()
 {
@@ -303,6 +335,11 @@ if [ $BUILD_INSTALLER == 1 ]; then
   #set installer icon
   ./$SCRIPTS/SetFileIcon -image resources/$PLUGIN_NAME.icns -file "${PKG}"
 
+  echo "adding example collection"
+  echo ""
+  stage_example_collection "build-mac/installer"
+  stage_thumbnail_templates "build-mac/installer"
+
   #---------------------------------------------------------------------------------------------------------
   # make dmg, can use dmgcanvas http://www.araelium.com/dmgcanvas/ to make a nice dmg, fallback to hdiutil
   echo "building dmg"
@@ -313,11 +350,11 @@ if [ $BUILD_INSTALLER == 1 ]; then
   else
     cp installer/changelog.txt build-mac/installer/
     cp installer/known-issues.txt build-mac/installer/
-    if [ -f "manual/$PLUGIN_NAME manual.pdf" ]; then
-      cp "manual/$PLUGIN_NAME manual.pdf" build-mac/installer/
-    elif [ -f "manual/$PROJECT_NAME manual.pdf" ]; then
-      cp "manual/$PROJECT_NAME manual.pdf" build-mac/installer/
+    if [ ! -f "$README_PDF" ]; then
+      echo "ERROR: Rendered README not found at $README_PDF"
+      exit 1
     fi
+    cp "$README_PDF" build-mac/installer/
     hdiutil create build-mac/$ARCHIVE_NAME.dmg -format UDZO -srcfolder build-mac/installer/ -ov -anyowners -volname $PLUGIN_NAME
   fi
 
@@ -356,6 +393,8 @@ else
   fi
 
   mkdir -p build-mac/zip
+  stage_example_collection "build-mac/zip"
+  stage_thumbnail_templates "build-mac/zip"
 
   if [ -d $APP ]; then
     cp -R $APP build-mac/zip/$PLUGIN_NAME.app

@@ -21,7 +21,16 @@ succeed. Publishing the draft remains a manual step.
 
 4. Update `NeuralAmpModeler/installer/changelog.txt`, the installer license,
    and third-party notices when necessary.
-5. Commit and push the release preparation to `main`.
+5. Verify that `distribution/nam-division-collection` contains the example
+   amp and cab libraries intended for the release.
+6. Regenerate `NeuralAmpModeler/manual/NAM Division README.pdf` from the root
+   README:
+
+   ```bash
+   ./NeuralAmpModeler/scripts/render-readme-pdf.sh
+   ```
+
+7. Commit and push the release preparation to `main`.
 
 ## Signing
 
@@ -51,7 +60,9 @@ workflow will stop before building.
 
 After **Release Native** succeeds, open GitHub **Releases**, inspect both
 assets, edit the generated notes, and publish the draft. Expected user-facing
-assets are a macOS `.dmg` and a Windows `.zip` containing the installer.
+assets are a macOS `.dmg` and a Windows `.zip`; each contains the installer,
+the `nam-division-collection` example folder, and the `amp-template.jpg` and
+`cab-template.jpg` thumbnail guides at its top level.
 
 ## If a build fails
 

@@ -15,6 +15,9 @@ from get_archive_name import get_archive_name
 from parse_config import parse_config
 
 
+IGNORED_DISTRIBUTION_FILES = {".DS_Store"}
+
+
 def add_file(archive, path, archive_name=None):
     if not path.is_file():
         raise FileNotFoundError(f"Required distribution file not found: {path}")
@@ -27,7 +30,7 @@ def add_directory(archive, path):
         raise FileNotFoundError(f"Required distribution directory not found: {path}")
 
     for child in sorted(path.rglob("*")):
-        if child.is_file():
+        if child.is_file() and child.name not in IGNORED_DISTRIBUTION_FILES:
             archive.write(
                 child,
                 child.relative_to(path.parent),
@@ -46,6 +49,15 @@ def main():
     config = parse_config(projectpath)
     binary_name = config["BUNDLE_NAME"]
     output_dir = Path(projectpath) / "build-win" / "out"
+    example_collection = (
+        Path(projectpath).parent
+        / "distribution"
+        / "nam-division-collection"
+    )
+    thumbnail_templates = [
+        Path(projectpath).parent / "docs" / "images" / "amp-template.jpg",
+        Path(projectpath).parent / "docs" / "images" / "cab-template.jpg",
+    ]
 
     if output_dir.exists():
         shutil.rmtree(output_dir)
@@ -83,8 +95,12 @@ def main():
             add_file(archive, Path(projectpath) / "installer" / "known-issues.txt")
             add_file(
                 archive,
-                Path(projectpath) / "manual" / "NeuralAmpModeler manual.pdf",
+                Path(projectpath) / "manual" / "NAM Division README.pdf",
             )
+
+        add_directory(archive, example_collection)
+        for template in thumbnail_templates:
+            add_file(archive, template)
 
     print(f"wrote {distribution_archive.name}")
 
