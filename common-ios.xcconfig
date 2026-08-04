@@ -1,6 +1,6 @@
-// this is used for macOS Developer ID / Appstore code-signing
-CERTIFICATE_ID = Oliver Larkin
-DEVELOPMENT_TEAM = 686EDA2T8T // log in to developer.apple.com and see the end of the URL e.g. https://developer.apple.com/account/#/overview/686EDA2T8T
+// This is used for Apple Developer code signing.
+CERTIFICATE_ID = Kyle Wetton
+DEVELOPMENT_TEAM = WZ3V49MU55
 
 // Which compiler to use
 COMPILER = com.apple.compilers.llvm.clang.1_0
@@ -96,5 +96,4 @@ SKIA_LNK_FLAGS = $(LIB_SKIA) $(LIB_SKOTTIE) $(LIB_SKSG) $(LIB_SKSHAPER) $(LIB_SK
 IGRAPHICS_LNK_FLAGS = $(SKIA_LNK_FLAGS)
 
 AUv3_FRAMEWORKS = -framework AudioToolbox -framework AVFoundation -framework CoreAudioKit -framework QuartzCore -framework UIKit -framework CoreText -framework CoreGraphics -framework UniformTypeIdentifiers
-
 
