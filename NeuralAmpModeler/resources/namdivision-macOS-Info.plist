@@ -7,7 +7,7 @@
 	<key>CFBundleExecutable</key>
 	<string>namdivision</string>
 	<key>CFBundleGetInfoString</key>
-	<string>namdivision v1.0.1 Copyright 2026 Pedal Division</string>
+	<string>namdivision v1.0.2 Copyright 2026 Pedal Division</string>
 	<key>CFBundleIconFile</key>
 	<string>namdivision.icns</string>
 	<key>CFBundleIdentifier</key>
@@ -19,11 +19,11 @@
 	<key>CFBundlePackageType</key>
 	<string>BNDL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.1</string>
+	<string>1.0.2</string>
 	<key>CFBundleSignature</key>
 	<string>NMDv</string>
 	<key>CFBundleVersion</key>
-	<string>1.0.1</string>
+	<string>1.0.2</string>
 	<key>CSResourcesFileMapped</key>
 	<true/>
 	<key>LSApplicationCategoryType</key>
