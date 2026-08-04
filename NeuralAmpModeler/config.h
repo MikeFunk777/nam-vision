@@ -1,7 +1,7 @@
 #define PLUG_NAME "NAM Division"
 #define PLUG_MFR "Pedal Division"
-#define PLUG_VERSION_HEX 0x00010000
-#define PLUG_VERSION_STR "1.0.0"
+#define PLUG_VERSION_HEX 0x00010001
+#define PLUG_VERSION_STR "1.0.1"
 #define PLUG_UNIQUE_ID 'NMDv'
 #define PLUG_MFR_ID 'NDiv'
 #define PLUG_URL_STR "https://pedaldivision.com"

@@ -19,8 +19,6 @@ by Steven Atkinson.
 For pre-built Windows and macOS installers, check
 [Releases](https://github.com/kylewetton/nam-division/releases).
 
-Note: Pre-built releases are currently unsigned and the macOS release is not notarized. macOS Gatekeeper or Windows SmartScreen may therefore display a warning when installing or running NAM Division. Download releases only from this repository’s official GitHub Releases page, or build the project from source.
-
 ## How to Use (in 4 steps)
 
 **This requires a simple but specific folder structure, so this is where we will get started.**

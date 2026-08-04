@@ -10,7 +10,7 @@ succeed. Publishing the draft remains a manual step.
 1. Start from a clean `main` branch and run the **Build Native** workflow.
 2. Update `PLUG_VERSION_HEX` and `PLUG_VERSION_STR` in
    `NeuralAmpModeler/config.h`. For version `1.2.3`, use hexadecimal
-   `0x00010203`.
+   `0x00010203`. Keep this product version numeric even for a beta release.
 3. Regenerate the platform metadata:
 
    ```bash
@@ -51,12 +51,13 @@ Create the tag only after the release commit is on `main`:
 ```bash
 git switch main
 git pull --ff-only origin main
-git tag -a v1.0.0 -m "NAM Division v1.0.0"
-git push origin v1.0.0
+git tag -a v1.0.1b -m "NAM Division v1.0.1 beta"
+git push origin v1.0.1b
 ```
 
-The tag must exactly match `PLUG_VERSION_STR` with a leading `v`, or the
-workflow will stop before building.
+Stable tags must match `PLUG_VERSION_STR` with a leading `v`. A beta tag may
+append `b`; the workflow marks its draft as a GitHub pre-release. Any other tag
+will stop before building.
 
 After **Release Native** succeeds, open GitHub **Releases**, inspect both
 assets, edit the generated notes, and publish the draft. Expected user-facing

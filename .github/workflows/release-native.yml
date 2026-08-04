@@ -35,8 +35,10 @@ jobs:
         shell: bash
         run: |
           version=$(sed -n 's/^#define PLUG_VERSION_STR "\([^"]*\)"/\1/p' "$PROJECT_NAME/config.h")
-          if [[ "$GITHUB_REF_NAME" != "v$version" ]]; then
-            echo "Release tag $GITHUB_REF_NAME does not match config.h version $version" >&2
+          stable_tag="v$version"
+          beta_tag="${stable_tag}b"
+          if [[ "$GITHUB_REF_NAME" != "$stable_tag" && "$GITHUB_REF_NAME" != "$beta_tag" ]]; then
+            echo "Release tag $GITHUB_REF_NAME must be $stable_tag or $beta_tag" >&2
             exit 1
           fi
 
@@ -145,8 +147,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          prerelease_args=()
+          if [[ "$GITHUB_REF_NAME" == *b ]]; then
+            prerelease_args+=(--prerelease)
+          fi
+
           gh release create "$GITHUB_REF_NAME" dist/* \
             --draft \
             --generate-notes \
             --title "NAM Division $GITHUB_REF_NAME" \
+            "${prerelease_args[@]}" \
             --verify-tag
