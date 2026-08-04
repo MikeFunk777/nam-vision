@@ -7,7 +7,7 @@
 	<key>CFBundleExecutable</key>
 	<string>namdivision</string>
 	<key>CFBundleGetInfoString</key>
-	<string>namdivision v1.0.2 Copyright 2026 Pedal Division</string>
+	<string>namdivision v1.0.3 Copyright 2026 Pedal Division</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.PedalDivision.app.namdivision.AUv3</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -17,9 +17,9 @@
 	<key>CFBundlePackageType</key>
 	<string>XPC!</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.2</string>
+	<string>1.0.3</string>
 	<key>CFBundleVersion</key>
-	<string>1.0.2</string>
+	<string>1.0.3</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>10.12.0</string>
 	<key>NSExtension</key>

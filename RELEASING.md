@@ -51,8 +51,8 @@ Create the tag only after the release commit is on `main`:
 ```bash
 git switch main
 git pull --ff-only origin main
-git tag -a v1.0.2b -m "NAM Division v1.0.2 beta"
-git push origin v1.0.2b
+git tag -a v1.0.3b -m "NAM Division v1.0.3 beta"
+git push origin v1.0.3b
 ```
 
 Stable tags must match `PLUG_VERSION_STR` with a leading `v`. A beta tag may

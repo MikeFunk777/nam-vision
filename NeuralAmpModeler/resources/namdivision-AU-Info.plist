@@ -30,7 +30,7 @@
 	<key>CFBundleExecutable</key>
 	<string>namdivision</string>
 	<key>CFBundleGetInfoString</key>
-	<string>namdivision v1.0.2 Copyright 2026 Pedal Division</string>
+	<string>namdivision v1.0.3 Copyright 2026 Pedal Division</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.PedalDivision.audiounit.namdivision</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -40,11 +40,11 @@
 	<key>CFBundlePackageType</key>
 	<string>BNDL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.2</string>
+	<string>1.0.3</string>
 	<key>CFBundleSignature</key>
 	<string>NMDv</string>
 	<key>CFBundleVersion</key>
-	<string>1.0.2</string>
+	<string>1.0.3</string>
 	<key>CSResourcesFileMapped</key>
 	<true/>
 	<key>LSMinimumSystemVersion</key>
